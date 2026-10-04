@@ -3,10 +3,11 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  Handle,
   MiniMap,
+  Position,
   ReactFlow,
   ReactFlowProvider,
-  useEdgesState,
   useNodesState,
   type Edge,
   type Node,
@@ -35,16 +36,29 @@ type TraceNodeData = {
   onSelect: (id: string) => void
 }
 
+/**
+ * Left-to-right columns with `account` as the hub. Edges name an explicit
+ * handle, so the one vertical hop (payee → honeyapi, same column) exits the
+ * bottom and enters the top instead of looping back on itself.
+ */
 const POSITIONS: Record<string, { x: number; y: number }> = {
-  device: { x: 0, y: 40 },
-  ip: { x: 220, y: 140 },
-  session: { x: 440, y: 40 },
-  account: { x: 440, y: 250 },
-  payee: { x: 680, y: 20 },
-  custdata: { x: 680, y: 160 },
-  honeyapi: { x: 680, y: 300 },
-  canary: { x: 920, y: 300 },
+  device: { x: 0, y: 170 },
+  ip: { x: 220, y: 170 },
+  session: { x: 440, y: 170 },
+  account: { x: 660, y: 170 },
+  payee: { x: 900, y: 40 },
+  custdata: { x: 900, y: 170 },
+  honeyapi: { x: 900, y: 300 },
+  canary: { x: 1130, y: 300 },
 }
+
+/** Handle ids available on every trace node. */
+const HANDLES = [
+  { id: 'in', type: 'target' as const, position: Position.Left },
+  { id: 'in-top', type: 'target' as const, position: Position.Top },
+  { id: 'out', type: 'source' as const, position: Position.Right },
+  { id: 'out-bottom', type: 'source' as const, position: Position.Bottom },
+]
 
 const GLYPH: Record<string, string> = {
   device: '▣',
@@ -57,13 +71,22 @@ const GLYPH: Record<string, string> = {
   canary: '✖',
 }
 
-function TraceNode({ data }: NodeProps) {
+function TraceNode({ id, data }: NodeProps) {
   const { label, sub, tone, glyph, index, active, anomalous, onSelect } = data as TraceNodeData
   const t = TONES[tone]
 
   return (
     <div
-      onClick={() => onSelect(label)}
+      onClick={() => onSelect(id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect(id)
+        }
+      }}
+      role="button"
+      aria-pressed={active}
+      aria-label={`${label} node — open technical record`}
       className="relative w-[168px] cursor-pointer"
       style={{ clipPath: 'polygon(0 8px, 4px 4px, 4px 0, calc(100% - 8px) 0, calc(100% - 4px) 4px, calc(100% - 4px) calc(100% - 8px), calc(100% - 8px) calc(100% - 4px), calc(100% - 8px) 100%, 8px 100%, 4px calc(100% - 4px), 4px calc(100% - 8px), 0 calc(100% - 8px))' }}
     >
@@ -106,12 +129,28 @@ function TraceNode({ data }: NodeProps) {
             aria-hidden
           />
         )}
+
+        {/* React Flow resolves edge endpoints from declared handles only —
+            without these every incident edge is dropped by the renderer. */}
+        {HANDLES.map((h) => (
+          <Handle
+            key={h.id}
+            id={h.id}
+            type={h.type}
+            position={h.position}
+            isConnectable={false}
+            className="!h-[5px] !w-[5px] !border-0"
+            style={{ background: active ? '#8fa0ff' : '#2f2f2f' }}
+          />
+        ))}
       </div>
     </div>
   )
 }
 
 const NODE_TYPES = { trace: TraceNode }
+
+const TOTAL_NODES = NODE_REVEAL_ORDER.length
 
 function buildEdges(revealed: Set<string>, selected: string | null): Edge[] {
   return ATTACKTRACE_EDGES.filter((e) => revealed.has(e.source) && revealed.has(e.target)).map((e) => {
@@ -121,6 +160,8 @@ function buildEdges(revealed: Set<string>, selected: string | null): Edge[] {
       id: e.id,
       source: e.source,
       target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
       type: 'smoothstep',
       animated: true,
       label: e.label && isSel ? e.label : undefined,
@@ -169,16 +210,22 @@ function TraceCanvas({
   selected: string | null
   onSelect: (id: string | null) => void
 }) {
+  /* `useNodesState` is required, not optional: React Flow only learns a node's
+     dimensions through the `onNodesChange` callback, and an unmeasured node
+     makes every incident edge bail out of the renderer. Nodes are not draggable
+     and edges are not connectable, so nothing else needs local state. */
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const edges = useMemo<Edge[]>(() => buildEdges(revealed, selected), [revealed, selected])
+
+  /* memoised so the rebuild effect below cannot re-run on every render */
+  const pick = useCallback(
+    (id: string) => onSelect(id === selected ? null : id),
+    [onSelect, selected],
+  )
 
   useEffect(() => {
-    setNodes(buildNodes(revealed, selected, (id) => onSelect(id === selected ? null : id)))
-  }, [revealed, selected, onSelect, setNodes])
-
-  useEffect(() => {
-    setEdges(buildEdges(revealed, selected))
-  }, [revealed, selected, setEdges])
+    setNodes(buildNodes(revealed, selected, pick))
+  }, [revealed, selected, pick, setNodes])
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -193,11 +240,11 @@ function TraceCanvas({
       nodes={nodes}
       edges={edges}
       onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
       onPaneClick={() => onSelect(null)}
       nodeTypes={NODE_TYPES}
       nodesDraggable={false}
       nodesConnectable={false}
+      edgesFocusable={false}
       elementsSelectable
       fitView={false}
       minZoom={0.45}
@@ -263,21 +310,22 @@ export function AttackTrace() {
   const navigate = useNavigate()
   const [selected, setSelected] = useState<string | null>(null)
   const [booting, setBooting] = useState(true)
+  const [builds, setBuilds] = useState(0)
 
-  const revealedCount = sim.stage === 0 ? 3 : sim.stage >= 8 ? 8 : Math.min(8, 2 + sim.stage + 1)
-  const revealed = useMemo(
-    () => new Set(NODE_REVEAL_ORDER.slice(0, sim.stage === 0 ? 3 : revealedCount)),
-    [sim.stage, revealedCount],
-  )
-
-  useEffect(() => {
-    if (sim.stage >= 4 && !selected) setSelected(null)
-  }, [sim.stage, selected])
+  /* the store owns the reveal schedule so the graph, the command centre and the
+     incident narrative can never disagree about how much of the trace exists */
+  const revealed = useMemo(() => new Set(sim.attackTraceRevealed), [sim.attackTraceRevealed])
 
   useEffect(() => {
     setBooting(true)
     const t = window.setTimeout(() => setBooting(false), 1200)
     return () => window.clearTimeout(t)
+  }, [builds])
+
+  /** REBUILD GRAPH re-indexes the session: re-boot the engine and drop the selection. */
+  const rebuild = useCallback(() => {
+    setSelected(null)
+    setBuilds((n) => n + 1)
   }, [])
 
   const onSelect = useCallback((id: string | null) => setSelected(id), [])
@@ -310,13 +358,13 @@ export function AttackTrace() {
           <div className="flex items-center gap-2">
             <StatusPip tone={sim.canaryTriggered ? 'crit' : 'warn'} />
             <span className="font-mono text-[10px] tracking-[0.22em] text-muted">
-              {sim.stage === 0 ? 'BASELINE TRACE · NO ACTIVE ATTACK' : `TRACE LIVE · ${revealed.size}/8 NODES RESOLVED`}
+              {sim.stage === 0 ? 'BASELINE TRACE · NO ACTIVE ATTACK' : `TRACE LIVE · ${revealed.size}/${TOTAL_NODES} NODES RESOLVED`}
             </span>
           </div>
           <h2 className="mt-2 font-pixel-sm text-bone terminal-glow">ATTACKTRACE</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <TerminalButton label="REBUILD GRAPH" tone="blue" size="sm" onClick={() => setSelected(null)} />
+          <TerminalButton label="REBUILD GRAPH" tone="blue" size="sm" onClick={rebuild} />
           <TerminalButton label="OPEN INCIDENT" tone="warn" size="sm" onClick={() => navigate('/incidents')} />
           {sim.stage === 0 && (
             <TerminalButton label="SIMULATE ATTACK" tone="blue" size="sm" active onClick={sim.start} />
@@ -324,7 +372,7 @@ export function AttackTrace() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <Frame
           title="SESSION GRAPH // S-84729"
           cutSize="md"
@@ -348,7 +396,7 @@ export function AttackTrace() {
             </div>
           }
         >
-          <div className="relative h-[480px] w-full overflow-hidden xl:h-[560px]">
+          <div className="relative h-[62vh] min-h-[480px] w-full overflow-hidden">
             <div className="pointer-events-none absolute inset-0 z-10" style={{ ...cut('md'), background: 'linear-gradient(180deg, rgba(5,5,5,0.55) 0%, transparent 14%, transparent 86%, rgba(5,5,5,0.55) 100%)' }} aria-hidden />
             <ReactFlowProvider>
               <TraceCanvas revealed={revealed} selected={selected} onSelect={onSelect} />
@@ -381,7 +429,7 @@ export function AttackTrace() {
               <KeyValue k="SESSION" v="S-84729" tone="soft" />
               <KeyValue k="ORIGIN" v="DELHI, IN · 103.87.xx.xx" />
               <KeyValue k="VECTOR" v="CREDENTIAL THEFT" tone="warn" />
-              <KeyValue k="NODES RESOLVED" v={`${revealed.size} / 8`} tone="blue" />
+              <KeyValue k="NODES RESOLVED" v={`${revealed.size} / ${TOTAL_NODES}`} tone="blue" />
               <KeyValue k="CANARY" v={sim.canaryTriggered ? 'TRIGGERED' : 'ARMED'} tone={sim.canaryTriggered ? 'crit' : 'ash'} />
               <KeyValue k="STATUS" v={sim.isolated ? 'ISOLATED' : 'OBSERVING'} tone={sim.isolated ? 'ok' : 'warn'} />
             </div>

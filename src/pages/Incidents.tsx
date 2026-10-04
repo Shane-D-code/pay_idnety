@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Panel, SubFrame } from '@/components/ui/Panel'
 import { TerminalButton } from '@/components/ui/TerminalButton'
@@ -6,7 +6,7 @@ import { Badge, KeyValue, SectionLabel, StatusPip } from '@/components/ui/indica
 import { EmptyState } from '@/components/ui/ThreatAlert'
 import { CanaryBanner } from '@/components/ui/CanaryAlert'
 import { PixelSkull } from '@/components/ui/PixelGlyph'
-import { TypeLine } from '@/components/ui/TypeLine'
+import { TypeLine, Caret } from '@/components/ui/TypeLine'
 import { TONES, type Tone } from '@/components/ui/tokens.tsx'
 import { useNavigate } from '@/lib/router'
 import { useSim } from '@/sim/SimulationProvider'
@@ -77,18 +77,94 @@ const SEVERITY_MATRIX: [string, string, string, number][] = [
 
 /* ------------------------------------------------------------------ report */
 
-function ReportBlock({ index }: { index: number }) {
-  const para = INCIDENT.report[index]
+/** Joins the report paragraphs and counts how many characters are on screen. */
+function useNarrativeChars(running: boolean, speed = 3) {
+  const total = useMemo(() => INCIDENT.report.join('\n\n').length, [])
+  const [shown, setShown] = useState(0)
+
+  useEffect(() => {
+    if (!running) {
+      setShown(0)
+      return
+    }
+    setShown(0)
+    let n = 0
+    const id = window.setInterval(() => {
+      n += 6
+      setShown(Math.min(total, n))
+      if (n >= total) window.clearInterval(id)
+    }, speed)
+    return () => window.clearInterval(id)
+  }, [running, total, speed])
+
+  return { shown, total, done: shown >= total }
+}
+
+function ReportBlock({ index, text }: { index: number; text: string }) {
   return (
     <motion.p
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, delay: index * 0.12 }}
+      transition={{ duration: 0.28 }}
       className="font-mono text-[11px] leading-[1.85] tracking-[0.02em] text-ash"
     >
       <span className="mr-2 text-[#3d3d3d]">{String(index + 1).padStart(2, '0')}│</span>
-      {para}
+      {text}
     </motion.p>
+  )
+}
+
+/** The AI investigator writes the narrative out in front of the analyst. */
+function AiNarrative({ running }: { running: boolean }) {
+  const { shown, done } = useNarrativeChars(running)
+
+  if (!running) {
+    return (
+      <div className="px-4 py-6 text-center">
+        <div className="mx-auto max-w-[440px]">
+          <div className="font-pixel-xs text-muted">NARRATIVE WITHHELD</div>
+          <p className="mt-2 font-mono text-[10px] leading-relaxed text-[#5a5a5a]">
+            The investigation is generated from the sealed behavioural graph for this incident. Run it to write the
+            analyst-facing narrative.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  /* slice the joined text back into paragraphs so blocks appear as they finish */
+  const flat = INCIDENT.report.join('\n\n')
+  const visible = flat.slice(0, shown)
+  let cursor = 0
+
+  return (
+    <div className="space-y-3 px-4 py-4">
+      <div className="flex items-center gap-2 border-b border-[#1a1a1a] pb-2">
+        <span className="font-pixel-xs text-muted">NARRATIVE</span>
+        <span className="h-px flex-1 bg-[#1a1a1a]" />
+        <span className="font-mono text-[9px] tracking-[0.14em] text-[#4a4a4a]">GENERATED FROM BEHAVIOURAL GRAPH</span>
+      </div>
+      {INCIDENT.report.map((para, i) => {
+        const text = visible.slice(cursor, cursor + para.length)
+        cursor += para.length + 2
+        if (!text) return null
+        return <ReportBlock key={i} index={i} text={text} />
+      })}
+      {!done && (
+        <div className="font-mono text-[10px] text-soft">
+          <Caret tone="soft" />
+        </div>
+      )}
+      {done && (
+        <div className="border-t border-[#1a1a1a] pt-3">
+          <TypeLine
+            text="> ANALYSIS COMPLETE. RECOMMENDED ACTIONS BELOW. NO HUMAN OPERATOR REQUIRED."
+            tone="ok"
+            speed={22}
+          />
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -349,6 +425,7 @@ export function Incidents() {
   const sim = useSim()
   const navigate = useNavigate()
   const open = sim.incidentOpen
+  const [investigating, setInvestigating] = useState(false)
 
   return (
     <div className="space-y-4">
@@ -425,7 +502,7 @@ export function Incidents() {
         )}
       </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
         {/* main column */}
         <div className="space-y-4">
           {!open ? (
@@ -475,27 +552,25 @@ export function Incidents() {
                 tone="soft"
                 right={
                   <>
-                    <StatusPip tone="ok" size={5} pulse={false} />
+                    <StatusPip tone={investigating ? 'ok' : 'neutral'} size={5} pulse={investigating} />
                     <span className="font-mono text-[9px] tracking-[0.16em] text-[#4a4a4a]">CONFIDENCE 98.7%</span>
                   </>
                 }
               >
-                <div className="space-y-3 px-4 py-4">
-                  <div className="flex items-center gap-2 border-b border-[#1a1a1a] pb-2">
-                    <span className="font-pixel-xs text-muted">NARRATIVE</span>
-                    <span className="h-px flex-1 bg-[#1a1a1a]" />
-                    <span className="font-mono text-[9px] tracking-[0.14em] text-[#4a4a4a]">GENERATED FROM BEHAVIOURAL GRAPH</span>
-                  </div>
-                  {INCIDENT.report.map((_, i) => (
-                    <ReportBlock key={i} index={i} />
-                  ))}
-                  <div className="border-t border-[#1a1a1a] pt-3">
-                    <TypeLine
-                      text="> ANALYSIS COMPLETE. RECOMMENDED ACTIONS BELOW. NO HUMAN OPERATOR REQUIRED."
-                      tone="ok"
-                      speed={22}
-                    />
-                  </div>
+                <AiNarrative running={investigating} />
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#1a1a1a] px-3 py-2.5">
+                  <span className="font-mono text-[9px] tracking-[0.14em] text-[#4a4a4a]">
+                    {investigating ? 'NARRATIVE GENERATED FROM SEALED EVIDENCE' : 'AWAITING OPERATOR REQUEST'}
+                  </span>
+                  <TerminalButton
+                    label={investigating ? 'RE-RUN INVESTIGATION' : 'INVESTIGATE INCIDENT'}
+                    tone="blue"
+                    size="xs"
+                    active={!investigating}
+                    onClick={() => {
+                      setInvestigating((v) => !v)
+                    }}
+                  />
                 </div>
               </Panel>
 

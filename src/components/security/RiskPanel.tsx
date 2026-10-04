@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Panel } from '@/components/ui/Panel'
-import { RISK_CONTRIBUTIONS } from '@/data'
+import { RISK_CONTRIBUTIONS, RISK_LEDGER_SUM } from '@/data'
 import { useSim } from '@/sim/SimulationProvider'
 import { useCountUp } from '@/lib/hooks'
 import { SegmentMeter } from './Gauges'
@@ -15,14 +15,14 @@ export function RiskPanel({
   showLedger?: boolean
 }) {
   const sim = useSim()
-  const target = sim.riskTarget
+  const target = sim.riskScore
   const shown = useCountUp(target, 1600)
   const tone = target >= 85 ? 'crit' : target >= 55 ? 'warn' : 'blue'
   const t = TONES[tone]
 
-  /* the ledger reveals its rows as the score climbs */
-  const revealed = Math.round((target / 100) * RISK_CONTRIBUTIONS.length)
-  const runningTotal = RISK_CONTRIBUTIONS.slice(0, revealed).reduce((a, c) => a + c.value, 0)
+  /* the ledger lights up a row when that signal's evidence lands in the stream */
+  const revealed = RISK_CONTRIBUTIONS.filter((c) => sim.stage >= c.fromStage).length
+  const ledgerSum = RISK_CONTRIBUTIONS.reduce((a, c) => a + c.value, 0)
 
   return (
     <Panel
@@ -117,12 +117,20 @@ export function RiskPanel({
               className="mt-3 flex items-center justify-between px-3 py-2"
               style={{ ...{ background: t.bg, boxShadow: `inset 0 0 0 1px rgba(${t.rgb},0.4)` } }}
             >
-              <span className="font-pixel-xs text-ash">TOTAL</span>
+              <span className="font-pixel-xs text-ash">COMPOSITE RISK</span>
               <span className="flex items-baseline gap-1">
                 <span className="font-pixel-sm tnum" style={{ color: t.text }}>
-                  {sim.stage >= 9 ? 100 : runningTotal}
+                  {sim.riskScore}
                 </span>
                 <span className="font-mono text-[10px] text-muted">/100</span>
+              </span>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between px-3 py-1.5 font-mono text-[9px] tracking-[0.14em]">
+              <span className="text-muted">
+                LEDGER Σ {revealed === RISK_CONTRIBUTIONS.length ? RISK_LEDGER_SUM : `${ledgerSum} MAX`}
+              </span>
+              <span style={{ color: revealed === RISK_CONTRIBUTIONS.length ? t.text : '#3d3d3d' }}>
+                {revealed}/{RISK_CONTRIBUTIONS.length} SIGNALS CONFIRMED
               </span>
             </div>
           </div>

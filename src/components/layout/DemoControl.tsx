@@ -22,7 +22,8 @@ export function DemoControl({ crt, onToggleCrt }: DemoControlProps) {
   const sim = useSim()
   const { navigate } = useRouter()
 
-  const riskPct = (sim.riskTarget / 100) * 100
+  const riskPct = sim.riskScore
+  const stagePct = Math.round((sim.stage / TOTAL_STAGES) * 100)
 
   return (
     <div className="relative">
@@ -71,55 +72,54 @@ export function DemoControl({ crt, onToggleCrt }: DemoControlProps) {
               <div className="px-3 py-3">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[10px] tracking-[0.18em] text-muted">SIMULATION STATE</span>
-                  <Badge tone={sim.stage === 0 ? 'ok' : sim.stage >= 9 ? 'crit' : 'warn'}>
+                  <Badge tone={sim.stage === 0 ? 'ok' : sim.canaryTriggered ? 'crit' : 'warn'}>
                     STAGE {String(sim.stage).padStart(2, '0')}/{TOTAL_STAGES}
                   </Badge>
                 </div>
 
                 <div className="mt-2 flex items-center gap-2">
-                  <StatusPip tone={sim.stage === 0 ? 'ok' : 'warn'} />
+                  <StatusPip tone={sim.stage === 0 ? 'ok' : sim.paused ? 'warn' : 'crit'} />
                   <span className="font-mono text-[11px] text-bone">
-                    {sim.stage === 0 ? 'IDLE · BASELINE' : STAGES[sim.stage - 1].title}
+                    {sim.stage === 0 ? 'IDLE · BASELINE' : sim.paused ? 'PAUSED' : STAGES[sim.stage - 1].title}
                   </span>
                 </div>
 
-                <Bar value={sim.stage * 10} tone={sim.stage >= 9 ? 'crit' : 'blue'} height={4} className="mt-2" />
+                <Bar value={stagePct} tone={sim.canaryTriggered ? 'crit' : 'blue'} height={4} className="mt-2" />
 
                 <div className="mt-3 flex items-center justify-between font-mono text-[10px] text-muted">
                   <span>BEHAVIORAL RISK</span>
                   <span className="tnum" style={{ color: riskPct > 80 ? '#ff3344' : '#5b72ff' }}>
-                    {sim.riskTarget}/100
+                    {sim.riskScore}/100
                   </span>
                 </div>
                 <Bar value={riskPct} tone={riskPct > 80 ? 'crit' : riskPct > 50 ? 'warn' : 'blue'} height={4} segments={24} />
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <TerminalButton
-                    label="RESET SIM"
-                    tone="neutral"
-                    size="xs"
-                    block
-                    onClick={() => {
-                      sim.reset()
-                    }}
-                  />
-                  <TerminalButton
-                    label="SIMULATE"
+                    label="START ATTACK"
                     tone="blue"
                     size="xs"
                     block
-                    active
+                    active={sim.stage > 0 && !sim.complete}
                     onClick={() => {
                       sim.start()
                       setOpen(false)
                     }}
                   />
                   <TerminalButton
-                    label="COMPLETE ATTACK"
-                    tone="crit"
+                    label={sim.paused ? 'RESUME' : 'PAUSE'}
+                    tone="warn"
                     size="xs"
                     block
-                    onClick={() => sim.completeAttack()}
+                    disabled={sim.stage === 0 || sim.complete}
+                    onClick={() => sim.togglePause()}
+                  />
+                  <TerminalButton
+                    label="RESET"
+                    tone="neutral"
+                    size="xs"
+                    block
+                    onClick={() => sim.reset()}
                   />
                   <TerminalButton
                     label="NORMAL MODE"
@@ -127,6 +127,15 @@ export function DemoControl({ crt, onToggleCrt }: DemoControlProps) {
                     size="xs"
                     block
                     onClick={() => sim.goToStage(0)}
+                  />
+                  <TerminalButton
+                    label="COMPLETE ATTACK"
+                    tone="crit"
+                    size="xs"
+                    block
+                    className="col-span-2"
+                    disabled={sim.complete}
+                    onClick={() => sim.completeAttack()}
                   />
                 </div>
 

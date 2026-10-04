@@ -34,17 +34,52 @@ export const AMBIENT_EVENT_POOL: Omit<SecurityEvent, 'id' | 'time'>[] = [
   { kind: 'SESSION RESUMED', subject: 'ANANYA', status: 'NORMAL' },
 ]
 
-/** Risk ledger — sums to 91/100 before the canary pushes the score to 100. */
-export const RISK_CONTRIBUTIONS: RiskContribution[] = [
-  { label: 'NEW DEVICE', value: 18, detail: 'FINGERPRINT 91C4 — NEVER OBSERVED' },
-  { label: 'UNUSUAL LOCATION', value: 14, detail: 'DELHI — 1,450 KM FROM BASELINE' },
-  { label: 'UNUSUAL TIME', value: 11, detail: '03:17 — OUTSIDE 08:00–22:30 WINDOW' },
-  { label: 'NEW PAYEE', value: 16, detail: 'PAYEE-NEW-4417 CREATED IN-SESSION' },
-  { label: 'ABNORMAL PAYOUT', value: 21, detail: '₹4,80,000 — 82× TYPICAL CEILING' },
-  { label: 'SENSITIVE API', value: 11, detail: '/finance/api-credentials ACCESSED' },
+/**
+ * Risk ledger — the six signals sum to exactly 91/100 before the canary pushes
+ * the composite score to 100. `fromStage` is when the evidence for that signal
+ * actually lands in the stream, so the ledger lights up row by row as the
+ * attack is replayed.
+ */
+export const RISK_CONTRIBUTIONS: (RiskContribution & { fromStage: number })[] = [
+  { label: 'NEW DEVICE', value: 18, detail: 'FINGERPRINT 91C4 — NEVER OBSERVED', fromStage: 1 },
+  { label: 'UNUSUAL LOCATION', value: 14, detail: 'DELHI — 1,450 KM FROM BASELINE', fromStage: 1 },
+  { label: 'UNUSUAL LOGIN TIME', value: 11, detail: '03:17 — OUTSIDE 08:00–22:30 WINDOW', fromStage: 1 },
+  { label: 'NEW PAYEE', value: 16, detail: 'PAYEE-NEW-4417 CREATED IN-SESSION', fromStage: 4 },
+  { label: 'ABNORMAL PAYOUT', value: 21, detail: '₹4,80,000 — 82× TYPICAL CEILING', fromStage: 5 },
+  { label: 'SENSITIVE API ACCESS', value: 11, detail: '/finance/api-credentials ACCESSED', fromStage: 6 },
 ]
 
+/** The exact sum of the ledger — the score the attack plateaus at. */
+export const RISK_LEDGER_SUM = RISK_CONTRIBUTIONS.reduce((a, c) => a + c.value, 0)
+
 export const RISK_BASELINE = 21
+
+/** Composite risk as it climbs during the simulation. */
+export const RISK_LADDER = [21, 38, 57, 74, 91, 100] as const
+
+/** Trust as it collapses — the session ends isolated at 09. */
+export const TRUST_LADDER_SCORES = [96, 88, 71, 61, 24, 9] as const
+
+/**
+ * What the attacker appears to be after, inferred from the actions taken inside
+ * the decoy environment. An axis only becomes legible once there is evidence for
+ * it, so the panel fills in as the simulation progresses.
+ */
+export const ATTACKER_INTENT: {
+  key: string
+  label: string
+  pct: number
+  fromStage: number
+  evidence: string
+}[] = [
+  { key: 'cred', label: 'CREDENTIAL DISCOVERY', pct: 92, fromStage: 7, evidence: 'READ /finance/api-credentials · SECRET VIEWED' },
+  { key: 'fin', label: 'FINANCIAL TARGETING', pct: 87, fromStage: 5, evidence: 'BALANCE READ · PAYOUT FORM OPENED' },
+  { key: 'priv', label: 'PRIVILEGE ESCALATION', pct: 71, fromStage: 8, evidence: 'ADMIN API PROBED · SCOPE EXPANSION ATTEMPT' },
+  { key: 'cust', label: 'CUSTOMER DATA DISCOVERY', pct: 54, fromStage: 8, evidence: 'CUSTOMER SEARCH · WILDCARD EXPORT' },
+  { key: 'src', label: 'SOURCE CODE DISCOVERY', pct: 19, fromStage: 6, evidence: 'STATIC ASSET PROBES ONLY' },
+]
+
+export const LIKELY_OBJECTIVE = 'FINANCIAL THEFT THROUGH PAYOUT MANIPULATION'
 
 /** Progressive trust-collapse ladder. */
 export const TRUST_LADDER: {

@@ -149,21 +149,31 @@ export function CanaryAlert() {
 
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
               <TerminalButton
+                label="INVESTIGATE"
+                tone="crit"
+                size="md"
+                active
+                onClick={() => {
+                  sim.closeAlert()
+                  navigate('/incidents')
+                }}
+              />
+              <TerminalButton
+                label="ISOLATE"
+                tone="warn"
+                size="md"
+                onClick={() => {
+                  sim.closeAlert()
+                  sim.isolateSession()
+                }}
+              />
+              <TerminalButton
                 label="VIEW ATTACKTRACE"
                 tone="blue"
                 size="sm"
                 onClick={() => {
                   sim.closeAlert()
                   navigate('/attacktrace')
-                }}
-              />
-              <TerminalButton
-                label="OPEN INCIDENT"
-                tone="warn"
-                size="sm"
-                onClick={() => {
-                  sim.closeAlert()
-                  navigate('/incidents')
                 }}
               />
               <TerminalButton

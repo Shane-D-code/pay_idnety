@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 
 export interface LoadLine {
   label: string
@@ -79,46 +79,5 @@ export function TerminalLoader({
         </div>
       )}
     </div>
-  )
-}
-
-/** Pip column for boot sequences and pipelines. */
-export function PipelineList({
-  items,
-  cursor = 0,
-  tone = 'ok',
-  className = '',
-  render,
-}: {
-  items: string[]
-  cursor?: number
-  tone?: 'ok' | 'warn' | 'crit' | 'info'
-  className?: string
-  render?: (item: string, i: number) => ReactNode
-}) {
-  const color =
-    tone === 'ok' ? '#35ff72' : tone === 'warn' ? '#ffd43b' : tone === 'crit' ? '#ff3344' : '#5b72ff'
-
-  return (
-    <ul className={`font-mono text-[11px] tracking-[0.06em] ${className}`}>
-      {items.map((item, i) => {
-        const state = i < cursor ? 'done' : i === cursor ? 'active' : 'idle'
-        return (
-          <li
-            key={item}
-            className="flex items-baseline gap-2 py-[3px]"
-            style={{ opacity: state === 'idle' ? 0.3 : 1 }}
-          >
-            <span className="w-[12px] shrink-0" style={{ color }}>
-              {state === 'done' ? '✓' : state === 'active' ? '▸' : '·'}
-            </span>
-            <span style={{ color: state === 'done' ? color : state === 'active' ? '#f5f5f5' : '#666' }}>
-              {render ? render(item, i) : item}
-            </span>
-            {state === 'active' && <span className="blink h-[9px] w-[5px] bg-current" />}
-          </li>
-        )
-      })}
-    </ul>
   )
 }

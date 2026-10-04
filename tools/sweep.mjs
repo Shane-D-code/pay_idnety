@@ -1,168 +1,141 @@
-/* Full-app responsive sweep: one browser, every route, every breakpoint.
-   Not part of the app. */
+/* ==========================================================================
+   Full-attack route sweep.
+   Boots the landing page, walks every console route at three simulation
+   checkpoints (idle, mid-attack, complete) and reports console errors plus a
+   text digest per route so regressions in rendered content are visible.
+   ========================================================================== */
+
 import puppeteer from 'puppeteer-core'
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-const BASE = process.env.BASE ?? 'http://localhost:5178/'
+const BASE = process.env.BASE ?? 'http://localhost:5199/'
+const ROUTES = ['/console', '/identity', '/sessions', '/simulation', '/attacktrace', '/deception', '/incidents', '/vaccination']
 
-const ROUTES = [
-  '#/', '#/console', '#/identity', '#/sessions', '#/simulation',
-  '#/attacktrace', '#/deception', '#/incidents', '#/vaccination', '#/conclusion',
-]
-const VIEWPORTS = [
-  { w: 1600, h: 1000 },
-  { w: 1366, h: 768 },
-  { w: 1024, h: 768 },
-  { w: 768, h: 1024 },
-  { w: 390, h: 844 },
-]
+const browser = await puppeteer.launch({
+  executablePath: CHROME,
+  headless: true,
+  args: ['--no-sandbox'],
+  defaultViewport: { width: 1600, height: 1000 },
+})
 
-const MEASURE = () => {
-  const de = document.documentElement
-  const overflow = []
-  const clipped = []
-  const masked = []
-  const fontsUsed = new Set()
+const page = await browser.newPage()
+const errs = []
+page.on('console', (m) => {
+  if (m.type() === 'error' || m.type() === 'warning') errs.push(`[${m.type()}] ${m.text()}`)
+})
+page.on('pageerror', (e) => errs.push(`[pageerror] ${e.stack ?? e.message}`))
 
-  const isOutOfFlow = (el) => {
-    const pos = getComputedStyle(el).position
-    return pos === 'absolute' || pos === 'fixed'
-  }
-  const inFlowOverflow = (el) => {
-    const ns = el.namespaceURI
-    if (ns && ns !== 'http://www.w3.org/1999/xhtml') return null
-    const cs = getComputedStyle(el)
-    if (cs.display === 'inline') return null
-    const box = el.getBoundingClientRect()
-    if (!box.width) return null
-    const rightLimit = box.right - (parseFloat(cs.paddingRight) || 0)
-    const bottomLimit = box.bottom - (parseFloat(cs.paddingBottom) || 0)
-    let worstRight = -Infinity
-    let worstBottom = -Infinity
-    let culprit = ''
-    for (const child of el.children) {
-      if (isOutOfFlow(child)) continue
-      const r = child.getBoundingClientRect()
-      if (!r.width && !r.height) continue
-      if (r.right > worstRight) {
-        worstRight = r.right
-        culprit = (child.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 26)
-      }
-      if (r.bottom > worstBottom) worstBottom = r.bottom
-    }
-    const dx = Math.round(worstRight - rightLimit)
-    const dy = Math.round(worstBottom - bottomLimit)
-    if (dx > 2 || dy > 2) return `x+${dx} y+${dy}${culprit ? ` "${culprit}"` : ''}`
-    return null
-  }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-  document.querySelectorAll('*').forEach((el) => {
-    const cs = getComputedStyle(el)
-    fontsUsed.add(cs.fontFamily.split(',')[0].replace(/["']/g, ''))
-    const o = cs.overflowX
-    if (o === 'auto' || o === 'scroll' || cs.position === 'fixed') return
-    const bad = inFlowOverflow(el)
-    if (bad) {
-      const t = (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30)
-      const row = `${el.tagName}.${el.className.toString().slice(0, 28)} [${bad}] :: ${t}`
-      if (o === 'hidden' || o === 'clip') masked.push(row)
-      else overflow.push(row)
-    }
-    if (cs.clipPath !== 'none' && el.scrollHeight > el.clientHeight + 4) {
-      clipped.push(`${el.tagName}.${el.className.toString().slice(0, 28)}`)
-    }
+async function goto(route) {
+  await page.evaluate((r) => {
+    window.location.hash = `#${r}`
+  }, route)
+  /* /attacktrace runs a deliberate 1.2s indexing loader before it renders */
+  await sleep(route === '/attacktrace' ? 2200 : 1100)
+}
+
+async function digest(route) {
+  return page.evaluate((r) => {
+    const main = document.querySelector('main')
+    if (!main) return { route: r, chars: 0, headings: [], text: '' }
+    const text = main.innerText.replace(/\s+/g, ' ').trim()
+    const headings = [...main.querySelectorAll('h1,h2,h3')].map((h) => h.innerText.trim()).slice(0, 6)
+    return { route: r, chars: text.length, headings, text: text.slice(0, 260) }
+  }, route)
+}
+
+/** Click the demo control's named button inside the popover. */
+async function demo(label) {
+  const ok = await page.evaluate((l) => {
+    /* TerminalButton injects a caret span, so match on inclusion not equality */
+    const btn = [...document.querySelectorAll('button')].find((b) => b.innerText.toUpperCase().includes(l))
+    if (!btn) return false
+    btn.click()
+    return true
+  }, label)
+  await sleep(220)
+  return ok
+}
+
+async function openDemo() {
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll('button')].find((b) => b.innerText.includes('DEMO CONTROL'))
+    btn?.click()
   })
+  await sleep(320)
+}
 
-  return {
-    scrollW: de.scrollWidth,
-    clientW: de.clientWidth,
-    fonts: [...fontsUsed],
-    pixelFont: document.fonts.check('12px "Press Start 2P"'),
-    overflow,
-    masked: [...new Set(masked)],
-    clipped: [...new Set(clipped)],
-    text: (document.body.innerText || '').replace(/\s+/g, ' ').slice(0, 70),
+/* ------------------------------------------------------------- landing */
+
+await page.goto(BASE, { waitUntil: 'networkidle2' })
+await sleep(900)
+const landing = await page.evaluate(() => ({
+  scrollH: document.body.scrollHeight,
+  chars: document.body.innerText.length,
+  headline: document.querySelector('h1')?.innerText.replace(/\s+/g, ' ') ?? '',
+}))
+console.log('LANDING', JSON.stringify(landing))
+
+/* enter console via the boot gate */
+await page.evaluate(() => {
+  const el = [...document.querySelectorAll('button')].find((e) =>
+    e.innerText.toLowerCase().includes('enter security console'),
+  )
+  el.click()
+})
+await sleep(2600)
+console.log('AFTER BOOT hash =', await page.evaluate(() => window.location.hash))
+
+const report = []
+const checkpoint = async (label) => {
+  for (const r of ROUTES) {
+    await goto(r)
+    report.push({ checkpoint: label, ...(await digest(r)) })
   }
 }
 
-const launch = () =>
-  puppeteer.launch({
-    executablePath: CHROME,
-    headless: true,
-    args: ['--no-sandbox', '--force-device-scale-factor=1'],
-  })
+await checkpoint('IDLE')
 
-let browser = await launch()
+/* ------------------------------------------------- mid-attack (stage 5) */
 
-/* Headless Chrome on this machine is prone to dropping its CDP connection after
-   a few dozen page opens, and to detaching frames mid-measurement. Retry with a
-   fresh page, then a fresh browser, rather than reporting phantom failures. */
-async function measure(vp, route) {
-  const attempt = async (browser) => {
-    const page = await browser.newPage()
-    const errs = []
-    page.on('console', (m) => m.type() === 'error' && errs.push(m.text()))
-    page.on('pageerror', (e) => errs.push(`PAGEERROR ${e.message}`))
-    try {
-      await page.setViewport({ width: vp.w, height: vp.h })
-      await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle0' })
-      await new Promise((r) => setTimeout(r, 2400))
-      const m = await page.evaluate(MEASURE)
-      await page.close()
-      return { ...m, errs }
-    } catch (e) {
-      try { await page.close() } catch {}
-      throw e
-    }
-  }
+await goto('/console')
+await openDemo()
+console.log('demo open:', await page.evaluate(() => !!document.body.innerText.match(/JUMP TO STAGE/)))
+await page.evaluate(() => {
+  const btn = [...document.querySelectorAll('button')].find((b) => b.innerText.trim() === '05')
+  btn.click()
+})
+await sleep(1400)
+await page.evaluate(() => {
+  const btn = [...document.querySelectorAll('button')].find((b) => b.innerText.includes('DEMO CONTROL'))
+  btn?.click()
+})
+await sleep(300)
+await page.evaluate(() => {
+  document.body.click()
+})
+await checkpoint('STAGE 05')
 
-  for (let tries = 0; tries < 4; tries++) {
-    if (!browser || !browser.connected) {
-      browser = await launch()
-    }
-    try {
-      return await attempt(browser)
-    } catch (e) {
-      const msg = String(e.message).split('\n')[0]
-      if (/Connection closed|detached Frame|Target closed|Session closed/i.test(msg)) {
-        try { await browser.close() } catch {}
-        browser = null
-        await new Promise((r) => setTimeout(r, 800))
-        continue
-      }
-      return { scrollW: 0, clientW: 0, fonts: [], pixelFont: false, overflow: [], masked: [], clipped: [], text: '', errs: [`HARNESS ${msg}`] }
-    }
-  }
-  return { scrollW: 0, clientW: 0, fonts: [], pixelFont: false, overflow: [], masked: [], clipped: [], text: '', errs: ['HARNESS gave up after 4 attempts'] }
+/* ------------------------------------------------------- full completion */
+
+await goto('/console')
+await openDemo()
+console.log('COMPLETE ATTACK clicked:', await demo('COMPLETE ATTACK'))
+await sleep(4200)
+await page.evaluate(() => {
+  const btn = [...document.querySelectorAll('button')].find((b) => b.innerText.includes('DEMO CONTROL'))
+  btn?.click()
+})
+await sleep(300)
+await checkpoint('COMPLETE')
+
+console.log('\n=== DIGESTS ===')
+for (const row of report) {
+  console.log(`${row.checkpoint.padEnd(10)} ${row.route.padEnd(13)} chars=${String(row.chars).padEnd(6)} ${row.headings.join(' | ')}`)
+  console.log(`           ${row.text}`)
 }
 
-let failures = 0
-for (const vp of VIEWPORTS) {
-  const rows = []
-  for (const route of ROUTES) {
-    const m = await measure(vp, route)
-    const hScroll = m.scrollW > m.clientW + 1
-    const bad = m.overflow.length > 0 || hScroll || m.errs.length > 0 || !m.pixelFont
-    if (bad) failures++
-    rows.push({ route, ...m, hScroll, errs: m.errs })
-  }
-
-  const label = `${vp.w}x${vp.h}`.padEnd(10)
-  console.log(`\n${label} ${failures === 0 ? 'CLEAN' : ''}`)
-  for (const r of rows) {
-    const flags = []
-    if (r.hScroll) flags.push(`H-SCROLL ${r.scrollW}>${r.clientW}`)
-    if (r.overflow.length) flags.push(`OVERFLOW x${r.overflow.length}`)
-    if (r.errs.length) flags.push(`ERRORS x${r.errs.length}`)
-    if (!r.pixelFont) flags.push('PIXEL FONT MISSING')
-    console.log(
-      `  ${flags.length ? 'FAIL' : ' ok '} ${r.route.padEnd(15)} h=${String(r.scrollH ?? '').padEnd(0)}${flags.length ? ' ' + flags.join(' | ') : ''}`,
-    )
-    if (r.overflow.length) r.overflow.forEach((o) => console.log(`        ${o}`))
-    if (r.errs.length) r.errs.slice(0, 3).forEach((e) => console.log(`        ${e}`))
-    if (r.masked.length) r.masked.forEach((o) => console.log(`        (masked/intentional) ${o}`))
-  }
-}
-
-console.log(`\n${failures === 0 ? 'ALL CLEAN' : `${failures} page/viewport combinations with findings`}`)
 await browser.close()
+console.log('\n=== MESSAGES (' + errs.length + ') ===')
+console.log([...new Set(errs)].join('\n---\n').slice(0, 6000))

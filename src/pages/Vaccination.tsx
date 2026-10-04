@@ -102,7 +102,7 @@ function RuleCard({ armed }: { armed: boolean }) {
         {/* rule head */}
         <div className="flex flex-wrap items-center gap-3 border-b border-[#1a1a1a] px-4 py-3">
           <span className="font-pixel-lg leading-none text-ok" style={{ textShadow: '0 0 18px rgba(53,255,114,0.5)' }}>
-            {VACCINE_RULE.id}
+            #{VACCINE_RULE.id}
           </span>
           <span className="h-8 w-px bg-[#1e1e1e]" aria-hidden />
           <div className="min-w-0">
@@ -361,7 +361,7 @@ function CoveragePanel({ armed }: { armed: boolean }) {
 export function Vaccination() {
   const sim = useSim()
   const navigate = useNavigate()
-  const armed = sim.ruleDeployed
+  const armed = sim.securityVaccineDeployed
   const [runId, setRunId] = useState(0)
 
   // Re-run the terminal pipeline whenever the rule actually lands.
@@ -399,14 +399,14 @@ export function Vaccination() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-4">
           <PipelinePanel armed={armed} runId={runId} onDeploy={() => sim.goToStage(10)} />
           <RuleCard armed={armed} />
           <ImpactPanel armed={armed} />
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <CoveragePanel armed={armed} />
 
           <Panel title="WHY IT WORKS" cutSize="md" tone="neutral">

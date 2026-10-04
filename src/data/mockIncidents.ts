@@ -38,7 +38,7 @@ export const INCIDENT: Incident = {
     'The session originated from a previously unseen device, an unregistered location and an atypical hour — three independent signals that combined into a divergence score of 64 points before any transactional action was attempted.',
     'The session subsequently created a new payee and requested an unusually large payout of ₹4,80,000, roughly 82× the ceiling observed across 74 legitimate sessions in the last 30 days.',
     'Rather than locking the account and alerting the real user, IdentityTwin progressively reduced trust and redirected the session into a controlled deception environment. There the session accessed a canary credential — a synthetic secret with no operational value — confirming malicious intent to monetise the access.',
-    'No real customer record was read, no live credential was disclosed and no funds moved. The attack was contained at step six of ten and converted into a reusable behavioural signature.',
+    'No real customer record was read, no live credential was disclosed and no funds moved. The attack was contained at stage 11 of 13 and converted into a reusable behavioural signature.',
   ],
   actions: ['ISOLATE SESSION', 'REVOKE ACTIVE CREDENTIALS', 'CANCEL PENDING PAYOUT', 'PRESERVE EVIDENCE'],
 }

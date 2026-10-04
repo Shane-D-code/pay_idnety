@@ -39,15 +39,6 @@ export const VACCINATION_IMPACT: { value: string; label: string; tone: ImpactTon
   { value: '1,284', label: 'IDENTITIES PROTECTED', tone: 'ok' },
 ]
 
-export const BOOT_SEQUENCE = [
-  'INITIALIZING IDENTITYTWIN...',
-  'LOADING BEHAVIORAL ENGINE...',
-  'LOADING THREAT DETECTION...',
-  'LOADING DECEPTION ENGINE...',
-  'LOADING ATTACKTRACE...',
-  'SYSTEM READY.',
-]
-
 /** Left column of the final before/after system screen. */
 export const WITHOUT_TWIN = [
   'STOLEN CREDENTIALS',

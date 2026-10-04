@@ -16,8 +16,8 @@ import { TONES, cut, type Tone } from '@/components/ui/tokens.tsx'
 import {
   ATTACK_SESSION_ID,
   DRIFT_MATRIX,
-  IDENTITIES,
-  SESSIONS,
+  IDENTITY_BY_ID,
+  ALL_SESSIONS,
   type Session,
   type SessionKind,
 } from '@/data'
@@ -58,16 +58,28 @@ const KIND_TONE: Record<SessionKind, Tone> = {
 
 const RISK_TONE = (risk: number): Tone => (risk >= 75 ? 'crit' : risk >= 40 ? 'warn' : risk >= 15 ? 'soft' : 'ok')
 
-const ROW = 'grid w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_54px_56px] items-center gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)_minmax(0,1.15fr)_62px_92px_52px_96px]'
+const ROW = 'grid w-full grid-cols-[minmax(0,1fr)_minmax(0,1fr)_54px_92px] items-center gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.75fr)_minmax(0,1fr)_62px_92px_52px_104px]'
 
-const identityOf = (s: Session) => IDENTITIES.find((i) => i.id === s.identityId)
+const identityOf = (s: Session) => IDENTITY_BY_ID.get(s.identityId)
 
-/** Divergence climbs as the scenario advances — device, then place+time, then money. */
+/**
+ * Divergence climbs as the scenario advances — device first, then place + time,
+ * then money, then the decoy/isolation tail where the twin stops matching the
+ * session entirely.
+ */
+const DRIFT_BY_STAGE: Record<number, number> = {
+  1: 18, // device fingerprint alone
+  2: 43, // device + location + time
+  3: 55, // twin match below threshold
+  4: 64, // new payee added
+  5: 78, // payout far outside ceiling
+  6: 84, // admin scope probe
+  7: 90, // bulk export intent
+}
+
 function liveDrift(session: Session, stage: number) {
   if (session.id !== ATTACK_SESSION_ID || stage === 0) return session.id === ATTACK_SESSION_ID ? 0 : session.drift
-  if (stage === 1) return 18
-  if (stage >= 4) return 64
-  return 43
+  return DRIFT_BY_STAGE[stage] ?? 100
 }
 
 function driftSteps(session: Session) {
@@ -99,9 +111,9 @@ function useLiveSessionState() {
       }
       return {
         ...s,
-        risk: sim.riskTarget,
+        risk: sim.riskScore,
         drift: liveDrift(s, stage),
-        kind: (sim.isolated ? 'ISOLATED' : sim.decoyActive ? 'DECOY' : 'ATTACK') as SessionKind,
+        kind: (sim.isolated ? 'ISOLATED' : sim.deceptionActive ? 'DECOY' : 'ATTACK') as SessionKind,
         trustState: sim.trustState,
         live: true,
       }
@@ -222,6 +234,23 @@ function SessionRow({
   const riskTone = RISK_TONE(session.risk)
   const alert = session.kind === 'ISOLATED' || session.kind === 'ATTACK'
 
+  /* the status cell reports what is happening to the session right now, not
+     just which trust rung it sits on */
+  const statusTone: Tone =
+    session.kind === 'ISOLATED' ? 'ok' : session.kind === 'DECOY' ? 'blue' : session.kind === 'ATTACK' ? 'crit' : 'ok'
+  const statusLabel =
+    session.kind === 'ISOLATED'
+      ? 'CONTAINED'
+      : session.kind === 'DECOY'
+        ? 'IN HONEY ENV'
+        : session.kind === 'ATTACK'
+          ? session.live
+            ? 'ATTACK IN PROGRESS'
+            : 'COMPROMISED'
+          : session.live
+            ? 'ACTIVE'
+            : 'COMPLETE'
+
   return (
     <motion.button
       type="button"
@@ -265,7 +294,7 @@ function SessionRow({
             </span>
           </div>
           <div className="mt-1 truncate font-mono text-[9px] tracking-[0.1em] text-[#4a4a4a]">
-            {session.location} · {session.ip}
+            IP {session.ip}
           </div>
         </div>
 
@@ -273,6 +302,16 @@ function SessionRow({
         <div className="min-w-0">
           <div className="truncate font-mono text-[10px] tracking-[0.1em] text-ash">{session.identityName}</div>
           <div className="mt-1 truncate font-mono text-[9px] tracking-[0.1em] text-[#4a4a4a]">{session.identityId}</div>
+        </div>
+
+        {/* location */}
+        <div className="min-w-0">
+          <div className="truncate font-mono text-[10px] tracking-[0.06em] text-ash lg:text-[10px]">
+            {session.location}
+          </div>
+          <div className="mt-1 truncate font-mono text-[9px] tracking-[0.06em] text-[#4a4a4a]">
+            BASELINE {identityOf(session)?.normalLocations?.[0] ?? '—'}
+          </div>
         </div>
 
         {/* device */}
@@ -303,9 +342,15 @@ function SessionRow({
           </span>
         </div>
 
-        {/* trust */}
-        <div className="hidden lg:block">
+        {/* status — trust state plus the live/contained marker */}
+        <div className="min-w-0">
           <TrustBadge state={session.trustState} />
+          <div
+            className="mt-1 truncate font-mono text-[9px] tracking-[0.14em]"
+            style={{ color: statusTone === 'ok' ? '#35ff72' : statusTone === 'crit' ? '#ff3344' : '#5b72ff' }}
+          >
+            {statusLabel}
+          </div>
         </div>
       </div>
 
@@ -425,7 +470,7 @@ export function Sessions() {
 
   const all = useMemo(
     () =>
-      SESSIONS.map((s) => live(s)).sort((a, b) => {
+      ALL_SESSIONS.map((s) => live(s)).sort((a, b) => {
         if (a.live !== b.live) return a.live ? -1 : 1
         return b.risk - a.risk
       }),
@@ -491,7 +536,7 @@ export function Sessions() {
         <SessionStat label="TRACKED" value={all.length} tone="bone" note="SYNTHETIC" />
         <SessionStat label="NORMAL" value={counts.LEGIT} tone="ok" note="BASELINE MATCH" />
         <SessionStat label="DRIFT" value={counts.DRIFT} tone="warn" note="REVIEW" />
-        <SessionStat label="DECOY" value={counts.DECOY + (sim.decoyActive && !sim.isolated ? 1 : 0)} tone="blue" note="HONEY ENV" />
+        <SessionStat label="DECOY" value={counts.DECOY + (sim.deceptionActive && !sim.isolated ? 1 : 0)} tone="blue" note="HONEY ENV" />
         <SessionStat label="ATTACKER" value={counts.ATTACK} tone="crit" note="S-84729" />
         <SessionStat label="ISOLATED" value={counts.ISOLATED} tone="crit" note="TOKENS REVOKED" />
       </div>
@@ -550,12 +595,12 @@ export function Sessions() {
         <FilterBar active={filter} counts={counts} onPick={setFilter} query={query} onQuery={setQuery} />
 
         <div className={`${ROW} border-b border-[#1a1a1a] bg-[#0d0d0d] px-3 py-[7px]`}>
-          {['SESSION', 'IDENTITY', 'DEVICE', 'START', 'DIVERGENCE', 'RISK', 'TRUST'].map((h, i) => (
+          {['SESSION', 'IDENTITY', 'LOCATION', 'DEVICE', 'START', 'DIVERGENCE', 'RISK', 'STATUS'].map((h, i) => (
             <span
               key={h}
-              className={`font-pixel-xs text-muted ${i >= 2 && i <= 4 ? 'hidden lg:block' : ''} ${
-                i === 5 ? 'text-right' : ''
-              } ${i === 6 ? 'hidden lg:block' : ''}`}
+              className={`font-pixel-xs text-muted ${i >= 3 && i <= 5 ? 'hidden lg:block' : ''} ${
+                i === 6 ? 'text-right' : ''
+              }`}
             >
               {h}
             </span>

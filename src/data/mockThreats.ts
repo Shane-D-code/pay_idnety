@@ -55,7 +55,7 @@ export const ATTACKTRACE_NODES: AttackTraceNode[] = [
     detail: {
       IDENTITY: 'ADWIKA JAISWAL',
       HANDLE: 'USR_1024',
-      'TRUST SCORE': '96 → 12',
+      'TRUST SCORE': '96 → 09',
       CREDENTIAL: 'STOLEN · PASSWORD + OTP INTERCEPT',
       SEGMENT: 'PRIORITY / HIGH VALUE',
       ASSETS: '₹8,42,100 BALANCE · 6 PAYEES',
@@ -123,17 +123,29 @@ export interface TraceEdge {
   target: string
   tone: 'crit' | 'warn' | 'neutral'
   label?: string
+  /** handle ids declared on every trace node — see HANDLES in AttackTrace.tsx */
+  sourceHandle?: string
+  targetHandle?: string
 }
 
 export const ATTACKTRACE_EDGES: TraceEdge[] = [
   { id: 'tr-1', source: 'device', target: 'ip', tone: 'crit' },
   { id: 'tr-2', source: 'ip', target: 'session', tone: 'crit' },
-  { id: 'tr-3', source: 'session', target: 'account', tone: 'crit' },
-  { id: 'tr-4', source: 'session', target: 'payee', tone: 'crit' },
-  { id: 'tr-5', source: 'session', target: 'custdata', tone: 'warn' },
-  { id: 'tr-6', source: 'session', target: 'honeyapi', tone: 'warn' },
+  { id: 'tr-3', source: 'session', target: 'account', tone: 'crit', label: 'HIJACK' },
+  /* the account is the hub — every downstream resource hangs off it */
+  { id: 'tr-4', source: 'account', target: 'payee', tone: 'crit' },
+  { id: 'tr-5', source: 'account', target: 'custdata', tone: 'warn' },
+  { id: 'tr-6', source: 'account', target: 'honeyapi', tone: 'warn' },
   { id: 'tr-7', source: 'honeyapi', target: 'canary', tone: 'crit', label: 'TRIGGERED' },
-  { id: 'tr-8', source: 'payee', target: 'session', tone: 'crit' },
+  /* same column: drop out of the payee and into the top of the honey api */
+  {
+    id: 'tr-8',
+    source: 'payee',
+    target: 'honeyapi',
+    tone: 'crit',
+    sourceHandle: 'out-bottom',
+    targetHandle: 'in-top',
+  },
 ]
 
 /** Nodes light up progressively as the simulation advances. */

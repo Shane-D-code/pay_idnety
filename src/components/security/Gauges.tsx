@@ -204,14 +204,4 @@ export function DriftBar({ value, max = 25, delay = 0 }: { value: number; max?: 
   )
 }
 
-/** Dashed circular path used for animated network links. */
-export function dashedProps(color: string, speed = 2.4) {
-  return {
-    stroke: color,
-    strokeWidth: 1.2,
-    strokeDasharray: '4 4',
-    style: { animation: `dash-flow ${speed}s linear infinite` },
-  }
-}
-
 export { TAU }

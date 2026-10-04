@@ -10,8 +10,9 @@ import { useSim, STAGES, TOTAL_STAGES } from '@/sim/SimulationProvider'
 import { useNavigate } from '@/lib/router'
 import { TONES } from '@/components/ui/tokens.tsx'
 
-interface Step {
+type StageView = {
   n: number
+  key: string
   title: string
   sub: string
   rows: [string, string][]
@@ -19,90 +20,16 @@ interface Step {
   headline?: string
 }
 
-const STEPS: Step[] = [
-  {
-    n: 1,
-    title: 'ATTACKER LOGIN',
-    sub: 'STOLEN CREDENTIALS REPLAYED SUCCESSFULLY',
-    rows: [
-      ['DEVICE', 'UNKNOWN WINDOWS DEVICE · FP 91C4-A7D2-0031'],
-      ['LOCATION', 'DELHI, IN · 1,450 KM FROM BASELINE'],
-      ['TIME', '03:17 AM · OUTSIDE 08:00–22:30 WINDOW'],
-      ['AUTH', 'PASSWORD ACCEPTED · OTP INTERCEPTED'],
-      ['SESSION', 'S-84729 CREATED · NO STEP-UP CHALLENGE'],
-    ],
-    accent: 'warn',
-  },
-  {
-    n: 2,
-    title: 'NEW PAYEE CREATED',
-    sub: 'BENEFICIARY ADDED INSIDE THE COMPROMISED SESSION',
-    rows: [
-      ['PAYEE ID', 'PAYEE-NEW-4417'],
-      ['PAYEE NAME', 'HOLLOWPOINT TRADING LLC'],
-      ['VERIFICATION', 'SKIPPED · IDENTITY HAS 6 KNOWN PAYEES'],
-      ['CREATED', '03:18:22 · 78s AFTER LOGIN'],
-      ['SIGNAL', 'NEW_PAYEE +16 RISK'],
-    ],
-    accent: 'warn',
-  },
-  {
-    n: 3,
-    title: 'HIGH VALUE PAYOUT',
-    sub: 'TRANSFER REQUEST EXCEEDS THE IDENTITY CEILING BY 82×',
-    rows: [
-      ['AMOUNT', '₹4,80,000'],
-      ['BASELINE CEILING', '₹8,000 (MAX OBSERVED 30D)'],
-      ['RATIO', '60× CEILING · 82× TYPICAL'],
-      ['POLICY', 'HELD FOR REVIEW · NO FUNDS MOVED'],
-      ['SIGNAL', 'ABNORMAL_PAYOUT +21 RISK'],
-    ],
-    accent: 'crit',
-    headline: '₹4,80,000',
-  },
-  {
-    n: 4,
-    title: 'SENSITIVE API ACCESS',
-    sub: 'ATTACKER PROBES SENSITIVE SCOPE BEFORE MONETISING',
-    rows: [
-      ['ENDPOINT', 'GET /finance/api-credentials'],
-      ['SCOPE', 'SENSITIVE · ADMIN READ'],
-      ['PREVIOUS', 'NEVER ACCESSED IN 214 ENROLLMENTS'],
-      ['POLICY', 'SERVED FROM DECOY ENVIRONMENT'],
-      ['SIGNAL', 'SENSITIVE_API +11 RISK'],
-    ],
-    accent: 'warn',
-  },
-  {
-    n: 5,
-    title: 'CUSTOMER DATA SEARCH',
-    sub: 'BULK EXPORT ATTEMPT — CONTAINED BY DECOY LAYER',
-    rows: [
-      ['ENDPOINT', 'GET /customers/search?limit=500'],
-      ['QUERY', 'WILDCARD EXPORT'],
-      ['RESULT', '1,482 SYNTHETIC RECORDS'],
-      ['REAL DATA', 'NEVER TOUCHED · ISOLATED AT PROXY'],
-      ['SIGNAL', 'EXFILTRATION INTENT OBSERVED'],
-    ],
-    accent: 'crit',
-  },
-  {
-    n: 6,
-    title: 'CANARY RESOURCE ACCESSED',
-    sub: 'THE ATTACKER READ A SECRET THAT DOES NOT EXIST',
-    rows: [
-      ['CANARY', 'PAYPAL_SECRET_0042'],
-      ['LOCATION', '/finance/api-credentials'],
-      ['CONFIDENCE', '98.7% MALICIOUS INTENT'],
-      ['ACTION', 'SESSION ISOLATED · TOKENS REVOKED'],
-      ['NEXT', 'BEHAVIOURAL SIGNATURE EXTRACTION'],
-    ],
-    accent: 'crit',
-    headline: 'CANARY TRIGGERED',
-  },
-]
+/** Where the step cards hand off to another console module. */
+const STAGE_EXIT: Record<number, { label: string; to: string; tone: 'blue' | 'crit' }[]> = {
+  5: [{ label: 'VIEW PAYOUT POLICY', to: '/sessions', tone: 'blue' }],
+  9: [{ label: 'OPEN DECOY ENVIRONMENT', to: '/deception', tone: 'blue' }],
+  10: [{ label: 'TRIGGER CANARY', to: '/deception', tone: 'crit' }],
+  12: [{ label: 'OPEN INCIDENT', to: '/incidents', tone: 'blue' }],
+  13: [{ label: 'OPEN VACCINATION', to: '/vaccination', tone: 'blue' }],
+}
 
-function StepCard({ step, revealed, live }: { step: Step; revealed: boolean; live: boolean }) {
+function StepCard({ step, revealed, live }: { step: StageView; revealed: boolean; live: boolean }) {
   const t = TONES[step.accent]
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -197,10 +124,17 @@ function StepCard({ step, revealed, live }: { step: Step; revealed: boolean; liv
                     </motion.div>
                   ))}
                 </dl>
-                {step.n === 6 && (
+                {STAGE_EXIT[step.n] && (
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#1a1a1a] pt-3">
-                    <TerminalButton label="OPEN DECOY ENVIRONMENT" tone="blue" size="xs" onClick={() => navigate('/deception')} />
-                    <TerminalButton label="TRIGGER CANARY" tone="crit" size="xs" onClick={() => navigate('/deception')} />
+                    {STAGE_EXIT[step.n].map((b) => (
+                      <TerminalButton
+                        key={b.label}
+                        label={b.label}
+                        tone={b.tone}
+                        size="xs"
+                        onClick={() => navigate(b.to)}
+                      />
+                    ))}
                   </div>
                 )}
               </motion.div>
@@ -209,7 +143,7 @@ function StepCard({ step, revealed, live }: { step: Step; revealed: boolean; liv
         </div>
       </div>
 
-      {step.n < STEPS.length && (
+      {step.n < TOTAL_STAGES && (
         <div className="flex h-8 items-center justify-center">
           <motion.span
             className="font-mono text-[11px]"
@@ -261,7 +195,7 @@ export function Simulation() {
                 ATTACK SIMULATION
               </h2>
               <p className="mt-2.5 max-w-[560px] font-mono text-[11px] leading-relaxed text-ash">
-                A full ten-stage account-takeover scenario driven by one shared engine. Identity, deception,
+                A full {TOTAL_STAGES}-stage account-takeover scenario driven by one shared engine. Identity, deception,
                 attacktrace, incident and vaccination views all react to the same state.
               </p>
 
@@ -308,7 +242,7 @@ export function Simulation() {
           </div>
 
           {/* stage rail */}
-          <div className="mt-5 grid gap-1 sm:grid-cols-5 lg:grid-cols-10">
+          <div className="mt-5 grid gap-1 sm:grid-cols-5 lg:grid-cols-7">
             {STAGES.map((s) => {
               const state = sim.stage > s.n ? 'done' : sim.stage === s.n ? 'active' : 'idle'
               return (
@@ -346,10 +280,10 @@ export function Simulation() {
         </div>
       </Panel>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         {/* step sequence */}
         <div className="space-y-0">
-          {STEPS.map((s) => (
+          {STAGES.map((s) => (
             <StepCard key={s.n} step={s} revealed={revealed.has(s.n)} live={running} />
           ))}
 
@@ -428,8 +362,8 @@ export function Simulation() {
             </div>
             <div className="border-t border-[#1a1a1a] px-3 py-2">
               <KeyValue k="TRUST SCORE" v={sim.trustScore} tone={sim.trustScore > 60 ? 'ok' : 'crit'} />
-              <KeyValue k="RISK TARGET" v={sim.riskTarget} tone={sim.riskTarget > 80 ? 'crit' : 'blue'} />
-              <KeyValue k="DECOY" v={sim.decoyActive ? 'ACTIVE' : 'STANDBY'} tone={sim.decoyActive ? 'ok' : 'ash'} />
+              <KeyValue k="BEHAVIORAL RISK" v={sim.riskScore} tone={sim.riskScore > 80 ? 'crit' : 'blue'} />
+              <KeyValue k="DECOY" v={sim.deceptionActive ? 'ACTIVE' : 'STANDBY'} tone={sim.deceptionActive ? 'ok' : 'ash'} />
               <KeyValue k="CANARY" v={sim.canaryTriggered ? 'TRIGGERED' : 'ARMED'} tone={sim.canaryTriggered ? 'crit' : 'ash'} />
             </div>
           </Panel>

@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion'
 import { ROUTES, useRouter } from '@/lib/router'
-import { useSim } from '@/sim/SimulationProvider'
+import { useSim, TOTAL_STAGES } from '@/sim/SimulationProvider'
 import { NavRow } from '@/components/ui/TerminalButton'
 import { Badge, StatusPip } from '@/components/ui/indicators'
 import { BrandMark } from './BrandMark'
 
 function RailFooter() {
-  const { stage, running } = useSim()
+  const { stage, simulationRunning } = useSim()
+  const pct = Math.round((stage / TOTAL_STAGES) * 100)
   return (
     <div className="mt-auto border-t border-[#1a1a1a] px-3 py-3">
       <div className="flex items-center justify-between">
@@ -18,16 +19,24 @@ function RailFooter() {
       </div>
       <div className="mt-2.5 flex items-center justify-between">
         <span className="font-pixel-xs text-muted">MODE</span>
-        <span className="font-pixel-xs text-warn">SIMULATION</span>
+        <span className="font-pixel-xs text-warn">SIMULATION ENVIRONMENT</span>
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <span className="font-pixel-xs text-muted">DATA</span>
+        <span className="font-pixel-xs text-soft">SYNTHETIC DATA</span>
       </div>
       <div className="mt-3 flex items-center justify-between font-mono text-[9px] tracking-[0.14em] text-[#3d3d3d]">
-        <span>ENGINE {String(stage).padStart(2, '0')}/10</span>
-        <span className={running ? 'text-soft' : 'text-[#3d3d3d]'}>{running ? '●REC' : '■IDLE'}</span>
+        <span>
+          ENGINE {String(stage).padStart(2, '0')}/{TOTAL_STAGES}
+        </span>
+        <span className={simulationRunning ? 'text-soft' : 'text-[#3d3d3d]'}>
+          {simulationRunning ? '●REC' : '■IDLE'}
+        </span>
       </div>
       <div className="mt-2 h-[3px] w-full overflow-hidden bg-[#151515]">
         <motion.div
           className="h-full bg-soft"
-          animate={{ width: `${Math.max(4, stage * 10)}%` }}
+          animate={{ width: `${Math.max(4, pct)}%` }}
           transition={{ duration: 0.5 }}
           style={{ boxShadow: '0 0 8px rgba(91,114,255,0.8)' }}
         />

@@ -12,7 +12,7 @@ import { Caret } from '@/components/ui/TypeLine'
 import { useSim } from '@/sim/SimulationProvider'
 import { useNavigate } from '@/lib/router'
 import { SYSTEM_STATUS_ROWS, TRUST_LADDER } from '@/data'
-import { STAGES } from '@/sim/SimulationProvider'
+import { STAGES, TOTAL_STAGES } from '@/sim/SimulationProvider'
 
 const SPARK_ID = [38, 42, 40, 46, 51, 48, 55, 58, 61, 60, 66, 69, 72, 70, 76]
 const SPARK_SESSIONS = [62, 58, 66, 71, 69, 74, 80, 77, 83, 86, 81, 88, 84, 87, 87]
@@ -52,7 +52,7 @@ function EngineLog() {
                 >
                   {r.tone === 'crit' ? '!' : r.tone === 'warn' ? '!' : '>'}
                 </span>
-                <span className="truncate text-ash">{r.text}</span>
+                <span className="min-w-0 truncate text-ash">{r.text}</span>
               </motion.li>
             ))}
         </ul>
@@ -166,21 +166,27 @@ function AttackCta() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-pixel-xs text-crit">
-                  {sim.stage >= 9 ? 'ATTACK CONTAINED' : `SIMULATION RUNNING · ${STAGES[sim.stage - 1].title}`}
+                  {sim.attackContained
+                    ? 'ATTACK CONTAINED'
+                    : sim.paused
+                      ? `SIMULATION PAUSED · ${STAGES[sim.stage - 1].title}`
+                      : `SIMULATION RUNNING · ${STAGES[sim.stage - 1].title}`}
                 </span>
-                <Badge tone={sim.stage >= 9 ? 'crit' : 'warn'}>STAGE {String(sim.stage).padStart(2, '0')}/10</Badge>
+                <Badge tone={sim.attackContained ? 'crit' : 'warn'}>
+                  STAGE {String(sim.stage).padStart(2, '0')}/{TOTAL_STAGES}
+                </Badge>
               </div>
               <p className="mt-2 font-mono text-[10px] tracking-[0.1em] text-muted">{STAGES[sim.stage - 1].sub}</p>
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {sim.stage < 7 && (
+              {!sim.complete && (
                 <TerminalButton label="COMPLETE ATTACK" tone="crit" size="sm" onClick={sim.completeAttack} />
               )}
               <TerminalButton
                 label="ENTER DECOY"
                 tone="blue"
                 size="sm"
-                active={sim.decoyActive}
+                active={sim.deceptionActive}
                 onClick={() => navigate('/deception')}
               />
               <TerminalButton label="VIEW ATTACKTRACE" tone="blue" size="sm" onClick={() => navigate('/attacktrace')} />
@@ -249,9 +255,9 @@ export function CommandCenter() {
           label="ACTIVE THREATS"
           value={sim.activeThreats}
           format={(n) => String(Math.round(n)).padStart(2, '0')}
-          delta={sim.stage >= 9 ? 'CONTAINED · 0 OPEN' : '2 DECOY · 1 ISOLATED'}
+          delta={sim.attackContained ? 'CONTAINED · 0 OPEN' : '2 DECOY · 1 ISOLATED'}
           tone="crit"
-          alert={sim.stage > 0 && sim.stage < 9}
+          alert={sim.stage > 0 && !sim.attackContained}
           spark={SPARK_THREATS}
         />
         <MetricTile
@@ -269,11 +275,11 @@ export function CommandCenter() {
       <AttackCta />
 
       {/* main grid */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-4">
           <EventStream events={sim.events} height={430} />
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             <Panel title="PROGRESSIVE TRUST" cutSize="md" tone="blue" right={<Badge tone="neutral">LIVE</Badge>}>
               <div className="px-3 py-3">
                 <TrustLadder current={sim.trustState} />

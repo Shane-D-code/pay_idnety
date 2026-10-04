@@ -85,7 +85,3 @@ export function HazardStrip({ tone = 'warn', label }: { tone?: 'warn' | 'crit' |
   )
 }
 
-/** Full-bleed scanning line used inside modals. */
-export function ModalScan() {
-  return <span className="scan-bar opacity-70" aria-hidden />
-}

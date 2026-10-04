@@ -25,6 +25,18 @@
   --color-ash: #a8a8a8;
   --color-muted: #666666;
 
+  /* ==========================================================================
+     PREMIUM LANDING PALETTE — black / white / acid lime.
+     Used only by the marketing surface; the console below stays blue.
+     ========================================================================== */
+  --color-ink: #0b0b0b;
+  --color-card: #111111;
+  --color-edge: #1c1c1c;
+  --color-lime: #b8ff3d;
+  --color-limesoft: #d5ff72;
+  --color-dim: #858585;
+  --color-cyber: #3155ff;
+
   /* --- signal --- */
   --color-ok: #35ff72;
   --color-warn: #ffd43b;
@@ -34,6 +46,7 @@
   --font-pixel: 'Press Start 2P', 'Courier New', monospace;
   --font-display: 'Pixelify Sans', 'Courier New', monospace;
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'Inter', 'Inter var', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 @layer base {
@@ -483,6 +496,97 @@
   .selection-blue::selection {
     background: var(--color-electric);
   }
+
+  /* ==========================================================================
+     PREMIUM LANDING — black / white / acid lime marketing surface
+     ========================================================================== */
+
+  .font-sans {
+    font-family: var(--font-sans);
+    font-feature-settings: 'ss01' 1, 'cv11' 1;
+  }
+
+  /* oversized hero typography: tight, dense, expensive */
+  .headline {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 0.86;
+    text-transform: uppercase;
+  }
+  .headline-tight {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 0.94;
+    text-transform: uppercase;
+  }
+  /* small tracked-out label above a section */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--color-dim);
+  }
+
+  .lime-text {
+    color: var(--color-lime);
+    text-shadow: 0 0 34px rgba(184, 255, 61, 0.35);
+  }
+
+  .glow-lime {
+    box-shadow:
+      0 0 0 1px rgba(184, 255, 61, 0.55),
+      0 0 26px rgba(184, 255, 61, 0.22);
+  }
+
+  /* frosted card surface used by every floating landing card */
+  .glass-card {
+    background: linear-gradient(158deg, rgba(23, 23, 23, 0.92) 0%, rgba(9, 9, 9, 0.94) 100%);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+      0 26px 60px -28px rgba(0, 0, 0, 0.95);
+  }
+
+  /* fine dotted field — premium texture, not CRT scanlines */
+  .dot-field {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.11) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+  .rule-grid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 96px 96px;
+  }
+
+  /* ambient lime bloom behind hero art */
+  .bloom {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(120px);
+    pointer-events: none;
+  }
+
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 62%, transparent 100%);
+  }
+  .mask-fade-r {
+    -webkit-mask-image: linear-gradient(to right, #000 74%, transparent 100%);
+    mask-image: linear-gradient(to right, #000 74%, transparent 100%);
+  }
+
+  .float-slow {
+    animation: float-y 7.5s ease-in-out infinite;
+  }
+  .float-slower {
+    animation: float-y 11s ease-in-out infinite;
+  }
 }
 
 /* ==========================================================================
@@ -539,6 +643,74 @@
 @keyframes dash-flow {
   to {
     stroke-dashoffset: -32;
+  }
+}
+
+/* ---- premium landing motion ---- */
+
+@keyframes float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-11px);
+  }
+}
+
+@keyframes bloom-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.06);
+  }
+}
+
+/* a signal packet travelling along a behavioural edge */
+@keyframes edge-travel {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sweep-x {
+  0% {
+    transform: translateX(-30%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

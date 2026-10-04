@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   PolarAngleAxis,
@@ -18,7 +18,7 @@ import { TerminalButton } from '@/components/ui/TerminalButton'
 import { Badge, Bar as ProgressBar, KeyValue, StatusPip } from '@/components/ui/indicators'
 import { EmptyState } from '@/components/ui/ThreatAlert'
 import { RadialGauge, DriftBar } from '@/components/security/Gauges'
-import { IdentityGraph } from '@/components/security/IdentityGraph'
+import { IdentityGraph, buildGraphNodes } from '@/components/security/IdentityGraph'
 import { TrustBadge, TrustProgressBar } from '@/components/security/TrustLadder'
 import { useSim } from '@/sim/SimulationProvider'
 import { useNavigate } from '@/lib/router'
@@ -29,6 +29,7 @@ import {
   CURRENT_HOURLY,
   DRIFT_MATRIX,
   IDENTITIES,
+  IDENTITY_BY_ID,
   SUBJECT,
   type RiskLevel,
 } from '@/data'
@@ -125,25 +126,59 @@ function ActivityHistogram({ drifting }: { drifting: boolean }) {
   )
 }
 
+/** How many matches the picker will render at once. */
+const PICKER_LIMIT = 36
+
 function IdentityPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const [query, setQuery] = useState('')
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return IDENTITIES.slice(0, PICKER_LIMIT)
+    return IDENTITIES.filter(
+      (i) => i.name.toLowerCase().includes(q) || i.id.toLowerCase().includes(q) || i.handle.toLowerCase().includes(q),
+    ).slice(0, PICKER_LIMIT)
+  }, [query])
+
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {IDENTITIES.map((i) => (
-        <button
-          key={i.id}
-          type="button"
-          onClick={() => onChange(i.id)}
-          className="cursor-pointer px-2 py-[4px] font-pixel-xs transition-colors"
-          style={{
-            clipPath: 'polygon(0 4px, 4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%)',
-            background: value === i.id ? '#244bff' : '#0c0c0c',
-            color: value === i.id ? '#050505' : '#6b6b6b',
-            boxShadow: value === i.id ? 'none' : 'inset 0 0 0 1px #1f1f1f',
-          }}
-        >
-          {i.name.split(' ')[0].toUpperCase()}
-        </button>
-      ))}
+    <div>
+      <div className="flex items-center gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="SEARCH 1,284 IDENTITIES…"
+          aria-label="Search identities"
+          className="min-w-0 flex-1 px-2 py-[5px] font-mono text-[11px] text-bone placeholder:text-[#3d3d3d]"
+          style={{ background: '#0c0c0c', boxShadow: 'inset 0 0 0 1px #1f1f1f', outline: 'none' }}
+        />
+        <span className="shrink-0 font-mono text-[9px] tracking-[0.14em] text-muted">
+          {matches.length === PICKER_LIMIT ? `${PICKER_LIMIT}+` : matches.length} SHOWN
+        </span>
+      </div>
+
+      <div className="mt-2 flex max-h-[104px] flex-wrap gap-1.5 overflow-y-auto">
+        {matches.length === 0 ? (
+          <span className="font-mono text-[10px] text-muted">NO IDENTITY MATCHES THAT QUERY.</span>
+        ) : (
+          matches.map((i) => (
+            <button
+              key={i.id}
+              type="button"
+              onClick={() => onChange(i.id)}
+              title={`${i.name} · ${i.id}`}
+              className="cursor-pointer px-2 py-[4px] font-pixel-xs transition-colors"
+              style={{
+                clipPath: 'polygon(0 4px, 4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%)',
+                background: value === i.id ? '#244bff' : '#0c0c0c',
+                color: value === i.id ? '#050505' : '#6b6b6b',
+                boxShadow: value === i.id ? 'none' : 'inset 0 0 0 1px #1f1f1f',
+              }}
+            >
+              {i.name.split(' ')[0].toUpperCase()}
+            </button>
+          ))
+        )}
+      </div>
     </div>
   )
 }
@@ -152,12 +187,19 @@ export function IdentityTwin() {
   const sim = useSim()
   const navigate = useNavigate()
   const [selectedId, setSelectedId] = useState(SUBJECT.id)
+  const [nodeId, setNodeId] = useState<string | null>(null)
 
-  const identity = IDENTITIES.find((i) => i.id === selectedId) ?? SUBJECT
+  const identity = IDENTITY_BY_ID.get(selectedId) ?? SUBJECT
   const isSubject = identity.id === SUBJECT.id
   const drifting = isSubject && sim.driftDetected
   const trust = isSubject ? sim.trustScore : identity.trustScore
   const shownTrust = useCountUp(trust, 1300)
+
+  /* the graph node definitions for whichever identity is on screen */
+  const node = useMemo(
+    () => buildGraphNodes(identity, drifting ? DRIFT_MATRIX : []).find((n) => n.id === nodeId) ?? null,
+    [identity, drifting, nodeId],
+  )
 
   return (
     <div className="space-y-4">
@@ -196,8 +238,8 @@ export function IdentityTwin() {
             />
             <div className="flex items-center gap-2">
               <TrustBadge state={isSubject ? sim.trustState : identity.trustState} />
-              <Badge tone={LEVEL_TONE[isSubject && sim.stage >= 7 ? 'CRITICAL' : identity.riskLevel]}>
-                {isSubject && sim.stage >= 7 ? 'HIGH RISK' : identity.riskLevel}
+              <Badge tone={LEVEL_TONE[isSubject && sim.payoutAttempted ? 'CRITICAL' : identity.riskLevel]}>
+                {isSubject && sim.payoutAttempted ? 'HIGH RISK' : identity.riskLevel}
               </Badge>
             </div>
           </div>
@@ -226,7 +268,7 @@ export function IdentityTwin() {
                 <KeyValue
                   k="CURRENT SESSION"
                   v={isSubject ? 'S-84729 · ISOLATED' : 'S-84722 · ACTIVE'}
-                  tone={isSubject && sim.stage >= 9 ? 'crit' : 'ok'}
+                  tone={isSubject && sim.isolated ? 'crit' : 'ok'}
                 />
               </div>
             </div>
@@ -256,7 +298,7 @@ export function IdentityTwin() {
               {[
                 ['ENROLLMENT DAYS', `${identity.enrollment}`],
                 ['SIGNALS TRACKED', '28'],
-                ['MODEL CONFIDENCE', isSubject && sim.stage >= 9 ? '12%' : '96.4%'],
+                ['MODEL CONFIDENCE', isSubject && sim.attackContained ? '09%' : '96.4%'],
                 ['DRIFT THRESHOLD', '18 PTS'],
                 ['LAST RECALIBRATED', '2H AGO'],
               ].map(([k, v]: string[]) => (
@@ -385,8 +427,42 @@ export function IdentityTwin() {
         }
       >
         <div className="grid gap-4 px-3 py-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-          <div className="relative overflow-hidden" style={{ background: '#08080a' }}>
-            <IdentityGraph anomalous={drifting} />
+          <div>
+            <div className="relative overflow-hidden" style={{ background: '#08080a' }}>
+              <IdentityGraph
+                identity={identity}
+                anomalous={drifting}
+                drift={DRIFT_MATRIX}
+                selected={nodeId}
+                onSelect={setNodeId}
+              />
+            </div>
+            {/* node inspector — reads out whichever dimension was clicked */}
+            <div className="mt-2 border border-[#1a1a1a] px-3 py-2" style={{ background: '#0b0b0b' }}>
+              {node ? (
+                <>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-pixel-xs" style={{ color: drifting ? '#ff3344' : '#5b72ff' }}>
+                      {node.label}
+                    </span>
+                    <span className="font-mono text-[9px] tracking-[0.14em] text-[#3d3d3d]">
+                      {drifting ? 'DIMENSION DRIFTED' : 'MATCHES BASELINE'}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 space-y-0">
+                    <KeyValue k="BASELINE" v={node.baseline} tone="soft" />
+                    <KeyValue k="CURRENT" v={node.current} tone={drifting ? 'crit' : 'ok'} />
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[10px] text-muted">
+                    CLICK A NODE IN THE FINGERPRINT GRAPH TO INSPECT THAT DIMENSION.
+                  </span>
+                  <span className="font-mono text-[9px] tracking-[0.14em] text-[#3d3d3d]">NO SELECTION</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -396,7 +472,7 @@ export function IdentityTwin() {
                 <span className="h-px flex-1 bg-[#1e1e1e]" />
                 <span className="font-mono text-[9px] text-[#3d3d3d]">BASELINE vs CURRENT</span>
               </div>
-              <BehaviourRadar current={drifting ? (sim.stage >= 9 ? 100 : sim.riskTarget) : 0} />
+              <BehaviourRadar current={drifting ? sim.riskScore : 0} />
             </div>
 
             <div>

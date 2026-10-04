@@ -76,38 +76,7 @@ export function ThreatAlert({
   )
 }
 
-/** Section 36 — terminal error state, never a browser alert. */
-export function SystemError({
-  message,
-  detail,
-  onRetry,
-  retryLabel = 'RETRY',
-}: {
-  message: string
-  detail?: string
-  onRetry?: () => void
-  retryLabel?: string
-}) {
-  return (
-    <div className="relative" style={{ ...cut('md'), background: '#8a1e28', padding: 2 }}>
-      <div className="relative px-5 py-4" style={{ ...cut('md'), background: '#0b0b0b' }}>
-        <div className="flex items-start gap-4">
-          <PixelSkull px={6} color="#ff3344" glow="rgba(255,51,68,0.5)" />
-          <div className="min-w-0 flex-1">
-            <h3 className="font-pixel-xs text-crit">SYSTEM ERROR</h3>
-            <p className="mt-2 font-mono text-[11px] leading-relaxed text-bone">{message}</p>
-            {detail && <p className="mt-1 font-mono text-[10px] text-muted">{detail}</p>}
-            {onRetry && (
-              <div className="mt-3">
-                <TerminalButton label={retryLabel} tone="warn" size="xs" onClick={onRetry} />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+
 
 /** Section 35 — terminal empty state. */
 export function EmptyState({

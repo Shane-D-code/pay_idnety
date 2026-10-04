@@ -34,8 +34,6 @@ export const TONES: Record<Tone, ToneSpec> = {
   ash: { border: '#2f2f2f', text: '#a8a8a8', bar: '#666666', bg: 'rgba(168,168,168,0.04)', rgb: '168,168,168' },
 }
 
-export const toneOf = (t: Tone = 'neutral') => TONES[t]
-
 /** Four small pixel brackets that pin the corners of a terminal panel. */
 export function CornerTicks({
   size = 8,

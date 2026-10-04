@@ -189,7 +189,7 @@ export function Conclusion() {
   const sim = useSim()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
-  const armed = sim.ruleDeployed
+  const armed = sim.securityVaccineDeployed
 
   /* Cinematic reveal — replays whenever the screen is entered. */
   useEffect(() => {

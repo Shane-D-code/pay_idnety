@@ -69,51 +69,6 @@ export function useTypewriter(text: string, speed = 14, enabled = true) {
   return { text: out, done }
 }
 
-export function useInterval(cb: () => void, ms: number | null) {
-  const saved = useRef(cb)
-  useEffect(() => {
-    saved.current = cb
-  }, [cb])
-  useEffect(() => {
-    if (ms === null) return
-    const id = window.setInterval(() => saved.current(), ms)
-    return () => window.clearInterval(id)
-  }, [ms])
-}
-
-/** Fires once when the element first scrolls into view. */
-export function useInViewOnce<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null)
-  const [seen, setSeen] = useState(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el || seen) return
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setSeen(true)
-          io.disconnect()
-        }
-      },
-      { threshold: 0.25 },
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [seen])
-
-  return { ref, seen }
-}
-
-/** Local-storage-free sound-free haptic-ish helper: announces to screen readers. */
-export function useAnnounce(message: string) {
-  useEffect(() => {
-    if (!message) return
-    const el = document.getElementById('it-announcer')
-    if (el) el.textContent = message
-  }, [message])
-}
-
 export function useKey(key: string, handler: () => void, enabled = true) {
   const cb = useCallback(handler, [handler])
   useEffect(() => {

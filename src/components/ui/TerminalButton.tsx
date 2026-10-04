@@ -35,7 +35,7 @@ export function TerminalButton({
   ...rest
 }: TerminalButtonProps) {
   const t = TONES[tone]
-  const on = active || (disabled ? false : false)
+  const on = active && !disabled
 
   return (
     <button

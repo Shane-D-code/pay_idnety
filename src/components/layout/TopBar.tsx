@@ -50,9 +50,9 @@ export function TopBar({ crt, onToggleCrt }: { crt: boolean; onToggleCrt: () => 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="hidden items-center gap-4 xl:flex">
             <span className="flex items-center gap-2">
-              <StatusPip tone={sim.stage >= 9 ? 'crit' : 'ok'} size={5} />
+              <StatusPip tone={sim.canaryTriggered ? 'crit' : 'ok'} size={5} />
               <span className="font-mono text-[10px] tracking-[0.16em] text-ash">
-                {sim.stage >= 9 ? 'SYSTEM BREACH CONTAINED' : 'SYSTEM ONLINE'}
+                {sim.canaryTriggered ? 'SYSTEM BREACH CONTAINED' : 'SYSTEM ONLINE'}
               </span>
             </span>
             <span className="font-mono text-[10px] tracking-[0.16em] text-muted">
@@ -113,8 +113,8 @@ export function BottomStatus({ onOpenTrace }: { onOpenTrace?: () => void }) {
           </span>
           <span>
             RISK{' '}
-            <span className="tnum" style={{ color: sim.riskTarget > 80 ? '#ff3344' : '#a8a8a8' }}>
-              {sim.riskTarget}
+            <span className="tnum" style={{ color: sim.riskScore > 80 ? '#ff3344' : '#a8a8a8' }}>
+              {sim.riskScore}
             </span>
           </span>
           <span className="flex items-center gap-1.5">

@@ -20,6 +20,12 @@ const FILTERS = [
   { key: 'SESSION', label: 'S-84729' },
 ] as const
 
+/* The four-column register does not fit a phone, so the STATUS track is
+   content-sized below sm and SUBJECT is dropped entirely. Both the header and
+   the rows share this template or they drift out of alignment. */
+const ROW_GRID =
+  'grid items-center gap-2 grid-cols-[46px_minmax(0,1fr)_auto] sm:grid-cols-[58px_minmax(0,1.15fr)_minmax(0,1fr)_88px]'
+
 /** Section 10 — scrolling terminal event stream with typed arrivals. */
 export function EventStream({
   events,
@@ -79,12 +85,11 @@ export function EventStream({
 
       {/* column header */}
       <div
-        className="grid grid-cols-[58px_minmax(0,1.15fr)_minmax(0,1fr)_auto] gap-2 border-b border-[#1a1a1a] px-3 py-[5px] font-mono text-[9px] tracking-[0.18em] text-[#3d3d3d]"
-        style={{ gridTemplateColumns: '58px minmax(0,1.15fr) minmax(0,1fr) 88px' }}
+        className={`${ROW_GRID} border-b border-[#1a1a1a] px-3 py-[5px] font-mono text-[9px] tracking-[0.18em] text-[#3d3d3d]`}
       >
         <span>TIME</span>
         <span>EVENT</span>
-        <span>SUBJECT</span>
+        <span className="hidden sm:block">SUBJECT</span>
         <span className="text-right">STATUS</span>
       </div>
 
@@ -102,8 +107,7 @@ export function EventStream({
                 animate={{ opacity: 1, x: 0, backgroundColor: 'rgba(0,0,0,0)' }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="grid items-center gap-2 border-b border-[#141414] px-3 py-[7px] transition-colors hover:bg-[#121218]"
-                style={{ gridTemplateColumns: '58px minmax(0,1.15fr) minmax(0,1fr) 88px' }}
+                className={`${ROW_GRID} border-b border-[#141414] px-3 py-[7px] transition-colors hover:bg-[#121218]`}
               >
                 <span className="font-mono text-[10px] tnum text-muted">{e.time}</span>
                 <span className="truncate font-mono text-[11px] uppercase tracking-[0.08em] text-bone">
@@ -114,10 +118,10 @@ export function EventStream({
                     </span>
                   )}
                 </span>
-                <span className="truncate font-mono text-[11px] text-ash">{e.subject}</span>
-                <span className="flex justify-end">
+                <span className="hidden truncate font-mono text-[11px] text-ash sm:block">{e.subject}</span>
+                <span className="flex min-w-0 justify-end">
                   <span
-                    className="truncate px-[6px] py-[2px] font-pixel-xs"
+                    className="min-w-0 truncate px-[6px] py-[2px] font-pixel-xs"
                     style={{
                       ...cut('sm'),
                       background: t.bg,
@@ -142,26 +146,5 @@ export function EventStream({
         </span>
       </div>
     </Panel>
-  )
-}
-
-/** Compact live ticker strip for page headers. */
-export function EventTicker({ events }: { events: SecurityEvent[] }) {
-  const line = useMemo(
-    () =>
-      events
-        .slice(0, 8)
-        .map((e) => `${e.time} ${e.kind} ${e.subject} [${e.status}]`)
-        .join('   ·   '),
-    [events],
-  )
-  return (
-    <div className="relative flex h-[20px] items-center overflow-hidden border-y border-[#151515] bg-[#080808]">
-      <span className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-[#080808] to-transparent" />
-      <div className="w-max shrink-0 whitespace-nowrap font-mono text-[9px] tracking-[0.14em] text-[#4a4a4a]">
-        <span className="px-4">{line}</span>
-        <span className="px-4">{line}</span>
-      </div>
-    </div>
   )
 }
