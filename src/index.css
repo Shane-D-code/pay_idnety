@@ -1,0 +1,691 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   IDENTITYTWIN — CORE DESIGN SYSTEM
+   RETRO CYBER SECURITY TERMINAL × MODERN SOC
+   ========================================================================== */
+
+@theme {
+  /* --- surfaces --- */
+  --color-void: #050505;
+  --color-abyss: #0a0a0a;
+  --color-panel: #101010;
+  --color-panel2: #161616;
+  --color-panel3: #1c1c1c;
+  --color-line: #232323;
+  --color-line2: #2f2f2f;
+
+  /* --- blues --- */
+  --color-blue: #1838ff;
+  --color-electric: #244bff;
+  --color-soft: #5b72ff;
+
+  /* --- text --- */
+  --color-bone: #f5f5f5;
+  --color-ash: #a8a8a8;
+  --color-muted: #666666;
+
+  /* --- signal --- */
+  --color-ok: #35ff72;
+  --color-warn: #ffd43b;
+  --color-crit: #ff3344;
+
+  /* --- type --- */
+  --font-pixel: 'Press Start 2P', 'Courier New', monospace;
+  --font-display: 'Pixelify Sans', 'Courier New', monospace;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-line);
+  }
+
+  html {
+    background: var(--color-void);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-void);
+    color: var(--color-bone);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.5;
+    font-feature-settings: 'zero' 1;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--color-blue);
+    color: #fff;
+  }
+
+  /* thin retro scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a2a var(--color-void);
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: #0a0a0a;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #242c66;
+    border: 1px solid #050505;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--color-blue);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 0;
+    font-weight: 400;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+/* ==========================================================================
+   GEOMETRY — pixel cut-corner frames
+   ========================================================================== */
+
+@layer utilities {
+  /* stepped pixel corner clip (8px notch, 4px step) */
+  .clip-corners {
+    clip-path: polygon(
+      0 8px,
+      4px 4px,
+      4px 0,
+      calc(100% - 8px) 0,
+      calc(100% - 4px) 4px,
+      calc(100% - 4px) calc(100% - 8px),
+      calc(100% - 8px) calc(100% - 4px),
+      calc(100% - 8px) 100%,
+      8px 100%,
+      4px calc(100% - 4px),
+      4px calc(100% - 8px),
+      0 calc(100% - 8px)
+    );
+  }
+  .clip-corners-sm {
+    clip-path: polygon(0 5px, 5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%);
+  }
+  .clip-corners-lg {
+    clip-path: polygon(
+      0 14px,
+      7px 7px,
+      7px 0,
+      calc(100% - 14px) 0,
+      calc(100% - 7px) 7px,
+      calc(100% - 7px) calc(100% - 14px),
+      calc(100% - 14px) calc(100% - 7px),
+      calc(100% - 14px) 100%,
+      14px 100%,
+      7px calc(100% - 7px),
+      7px calc(100% - 14px),
+      0 calc(100% - 14px)
+    );
+  }
+
+  /* ==========================================================================
+     CRT EFFECTS
+     ========================================================================== */
+
+  .crt-screen {
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* horizontal scanlines */
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.22) 3px,
+      rgba(0, 0, 0, 0) 4px
+    );
+    mix-blend-mode: multiply;
+  }
+
+  /* faint vertical aperture grille */
+  .aperture::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    background: repeating-linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.012) 0px,
+      rgba(255, 255, 255, 0.012) 1px,
+      rgba(0, 0, 0, 0) 1px,
+      rgba(0, 0, 0, 0) 3px
+    );
+  }
+
+  /* tiny pixel grid */
+  .pixel-grid {
+    background-image:
+      linear-gradient(to right, rgba(91, 114, 255, 0.055) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(91, 114, 255, 0.055) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  .pixel-grid-sm {
+    background-image:
+      linear-gradient(to right, rgba(91, 114, 255, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(91, 114, 255, 0.07) 1px, transparent 1px);
+    background-size: 8px 8px;
+  }
+
+  .pixel-grid-sm-dark {
+    background-image:
+      linear-gradient(to right, rgba(0, 0, 0, 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 1px, transparent 1px);
+    background-size: 8px 8px;
+  }
+
+  /* terminal glow — text */
+  .terminal-glow {
+    text-shadow:
+      0 0 1px rgba(245, 245, 245, 0.55),
+      0 0 10px rgba(36, 75, 255, 0.35),
+      0 0 26px rgba(24, 56, 255, 0.18);
+  }
+
+  .glow-blue {
+    box-shadow:
+      0 0 0 1px rgba(24, 56, 255, 0.5),
+      0 0 14px rgba(24, 56, 255, 0.22),
+      inset 0 0 18px rgba(24, 56, 255, 0.06);
+  }
+
+  .glow-ok {
+    box-shadow: 0 0 12px rgba(53, 255, 114, 0.3);
+  }
+  .glow-warn {
+    box-shadow: 0 0 12px rgba(255, 212, 59, 0.3);
+  }
+  .glow-crit {
+    box-shadow:
+      0 0 0 1px rgba(255, 51, 68, 0.5),
+      0 0 18px rgba(255, 51, 68, 0.3);
+  }
+
+  /* blinking terminal cursor */
+  .cursor::after {
+    content: '';
+    display: inline-block;
+    width: 0.62em;
+    height: 1.05em;
+    margin-left: 0.18em;
+    background: currentColor;
+    vertical-align: -0.18em;
+    animation: blink 1.05s steps(1, end) infinite;
+  }
+
+  .blink {
+    animation: blink 1.15s steps(1, end) infinite;
+  }
+
+  @keyframes blink {
+    0%,
+    49% {
+      opacity: 1;
+    }
+    50%,
+    100% {
+      opacity: 0;
+    }
+  }
+
+  /* subtle screen flicker */
+  .flicker {
+    animation: flicker 5.5s steps(60, end) infinite;
+  }
+
+  @keyframes flicker {
+    0%,
+    96%,
+    100% {
+      opacity: 1;
+    }
+    96.5% {
+      opacity: 0.94;
+    }
+    97% {
+      opacity: 1;
+    }
+    97.6% {
+      opacity: 0.9;
+    }
+    98.1% {
+      opacity: 1;
+    }
+  }
+
+  /* RGB separation / chromatic aberration */
+  .rgb-split {
+    text-shadow:
+      -0.6px 0 rgba(255, 51, 68, 0.35),
+      0.6px 0 rgba(91, 114, 255, 0.35);
+  }
+
+  .glitch {
+    position: relative;
+    display: inline-block;
+  }
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    clip-path: inset(0 0 0 0);
+  }
+  .glitch::before {
+    color: #ff3344;
+    animation: glitch-a 3.4s steps(2, end) infinite;
+  }
+  .glitch::after {
+    color: #244bff;
+    animation: glitch-b 2.9s steps(2, end) infinite;
+  }
+
+  @keyframes glitch-a {
+    0%,
+    92%,
+    100% {
+      transform: none;
+      opacity: 0;
+      clip-path: inset(0 0 100% 0);
+    }
+    93% {
+      transform: translate(-2px, -1px);
+      opacity: 0.85;
+      clip-path: inset(12% 0 62% 0);
+    }
+    95% {
+      transform: translate(2px, 1px);
+      opacity: 0.85;
+      clip-path: inset(58% 0 22% 0);
+    }
+    97% {
+      transform: translate(-1px, 0);
+      opacity: 0.6;
+      clip-path: inset(30% 0 48% 0);
+    }
+  }
+
+  @keyframes glitch-b {
+    0%,
+    90%,
+    100% {
+      transform: none;
+      opacity: 0;
+      clip-path: inset(0 0 100% 0);
+    }
+    91% {
+      transform: translate(2px, 1px);
+      opacity: 0.8;
+      clip-path: inset(38% 0 34% 0);
+    }
+    94% {
+      transform: translate(-2px, -1px);
+      opacity: 0.8;
+      clip-path: inset(70% 0 12% 0);
+    }
+    96.5% {
+      transform: translate(1px, 0);
+      opacity: 0.55;
+      clip-path: inset(18% 0 66% 0);
+    }
+  }
+
+  /* critical warning flash */
+  .warning-flash {
+    animation: warning-flash 1.05s steps(1, end) infinite;
+  }
+
+  @keyframes warning-flash {
+    0%,
+    74%,
+    100% {
+      box-shadow: inset 0 0 0 1px rgba(255, 51, 68, 0.5), 0 0 22px rgba(255, 51, 68, 0.16);
+      background-color: rgba(255, 51, 68, 0.04);
+    }
+    80% {
+      box-shadow: inset 0 0 0 1px rgba(255, 51, 68, 0.9), 0 0 34px rgba(255, 51, 68, 0.35);
+      background-color: rgba(255, 51, 68, 0.1);
+    }
+  }
+
+  /* ==========================================================================
+     TYPE HELPERS
+     ========================================================================== */
+
+  .font-pixel-xs {
+    font-family: var(--font-pixel);
+    font-size: 7px;
+    line-height: 1.7;
+    letter-spacing: 0.06em;
+  }
+  .font-pixel-sm {
+    font-family: var(--font-pixel);
+    font-size: 9px;
+    line-height: 1.8;
+    letter-spacing: 0.06em;
+  }
+  .font-pixel-md {
+    font-family: var(--font-pixel);
+    font-size: 12px;
+    line-height: 2;
+    letter-spacing: 0.08em;
+  }
+  .font-pixel-lg {
+    font-family: var(--font-pixel);
+    font-size: 18px;
+    line-height: 2.1;
+    letter-spacing: 0.1em;
+  }
+  .font-pixel-xl {
+    font-family: var(--font-pixel);
+    font-size: 26px;
+    line-height: 2.2;
+    letter-spacing: 0.12em;
+  }
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+  }
+
+  .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .label-blue {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-soft);
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ==========================================================================
+     MISC COMPONENT HELPERS
+     ========================================================================== */
+
+  .hairline {
+    border: 1px solid var(--color-line);
+  }
+
+  .bg-noise {
+    background-image: var(--noise-url);
+    background-repeat: repeat;
+  }
+
+  /* dim the whole console while an attack is running */
+  .alert-dim {
+    box-shadow: inset 0 0 0 100vmax rgba(24, 56, 255, 0.045);
+  }
+
+  .striped-warn {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(255, 212, 59, 0.16) 0 6px,
+      transparent 6px 12px
+    );
+  }
+
+  .striped-crit {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(255, 51, 68, 0.2) 0 6px,
+      transparent 6px 12px
+    );
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .selection-blue::selection {
+    background: var(--color-electric);
+  }
+}
+
+/* ==========================================================================
+   KEYFRAMES
+   ========================================================================== */
+
+@keyframes scan-down {
+  0% {
+    transform: translateY(-14vh);
+  }
+  100% {
+    transform: translateY(114vh);
+  }
+}
+
+@keyframes scan-x {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes marquee-y {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes marquee-x {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+@keyframes noise-jitter {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-3%, 2%);
+  }
+  20% {
+    transform: translate(2%, -3%);
+  }
+  30% {
+    transform: translate(-2%, -2%);
+  }
+  40% {
+    transform: translate(3%, 1%);
+  }
+  50% {
+    transform: translate(-1%, 3%);
+  }
+  60% {
+    transform: translate(2%, -1%);
+  }
+  70% {
+    transform: translate(-3%, -1%);
+  }
+  80% {
+    transform: translate(1%, 2%);
+  }
+  90% {
+    transform: translate(-1%, -2%);
+  }
+}
+
+@keyframes boot-flash {
+  0% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes crt-jump {
+  0% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(0);
+  }
+  46% {
+    transform: translateY(-1.5px);
+  }
+  47% {
+    transform: translateY(1px);
+  }
+  49% {
+    transform: translateY(0);
+  }
+}
+
+.scan-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 22vh;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(91, 114, 255, 0.045) 42%,
+    rgba(91, 114, 255, 0.085) 50%,
+    rgba(91, 114, 255, 0.045) 58%,
+    transparent 100%
+  );
+  animation: scan-down 8.5s linear infinite;
+}
+
+.scan-line-x {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 22%;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(36, 75, 255, 0.05),
+    transparent
+  );
+  animation: scan-x 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ==========================================================================
+   REACT FLOW OVERRIDES — keep the graph inside the terminal language
+   ========================================================================== */
+
+.react-flow__attribution {
+  display: none !important;
+}
+/* the minimap shell is resized per-breakpoint, so its inner svg must follow —
+   otherwise the library default (200x150) overflows the shell and is clipped */
+.react-flow__minimap svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+.react-flow__minimap {
+  border-radius: 0 !important;
+}
+.react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  min-width: 1px;
+  min-height: 1px;
+}
+.react-flow__node {
+  cursor: pointer;
+}
+.react-flow__edge-path {
+  stroke-linecap: square;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:focus .react-flow__edge-path {
+  stroke: var(--color-electric) !important;
+}
+
+[role='button']:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 1px solid var(--color-soft);
+  outline-offset: 2px;
+}
